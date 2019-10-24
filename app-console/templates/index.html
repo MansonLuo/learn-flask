@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block title %}learn flask from scratch{% endblock %}
+
+{% block style %}
+	{{ super() }}
+	<style>
+		p {
+			background-color: pink;
+		}
+	</style>
+{% endblock %}
+
+{% block body %}
+	<h1 class="center">Learn Flask from scratch</h1>
+	p
+	<p>following is a list of data</p>
+		
+	<ul>
+		<li>data1</li>
+		<li>data2</li>
+	</ul>
+
+{% endblock %}

@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Chapter 1:Basic Application Structure</title>
+		<meta charset="utf-8">
+		<link rel="stylesheet" href="../style.css">
+	</head>
+
+	<body>
+		<h1>Chapter 1: Basic Application Structure</h1>
+		
+		<div id="content">
+			<div>
+				<h2>Initialization</h2>
+				<p>
+					所有的Flask app都必须有一个application instance, 网络服务器会传递所有来自客户端的请求给这个实例处理。<br>
+					创建application instance: <br>
+					<pre class="code">
+from flask import Flask
+
+app = Flask(__name__)
+					</pre>
+					其中Flask构造器的参数的作用: 这个参数决定了flask app的位置，app依次去定位属于它的资源文件，比如图片和模板。<br>
+					
+				</p>
+			</div>
+			
+			<div>
+				<h2>Route and View Function</h2>
+				<p>
+					当app instance接受来自服务器分发的请求时，对于每一个请求，app instance必须知道去执行相应的代码，它维护了一张请求路径到python 函数的字典。这种映射就叫做route，这里的python函数叫做view function.<br>
+				定义rounte的两种方式: <br>
+					<ul>
+						<li>
+							app.route(..)装饰器: <br>
+							<pre class="code">
+@app.route('/')
+def index():       
+	//当客户端请求www.example.com/时，会执行这个函数。这里的"/"代表网站根目录。
+	return "&lt;h1&gt;Hello Flask&lt;/h1&gt;"
+							</pre>
+						</li>
+					
+						<li>
+							app.add_url_rule(URL, endpoint name, view function)<br>
+							这是最传统的方式。<br>
+							<pre class="code">
+def register():
+	return "<p>&lt;p&gt;请注册:&lt;/p&gt;"
+	
+app.add_url_rule("/register", "register", register)
+							</pre>
+						</li>
+					</ul>
+				</p>
+				
+				<h3>Dynamic Component</h3>
+				<p>
+					比如针对不同用户而变动子网址，称作动态网址。
+					<pre class="code">
+@app.route("/user/&lt;name&gt;"):
+def user(name):
+	//由尖括号包含的变量，接受以/user为前缀的任何字符串,整个请求网址为动态网址
+	//user函数里的参数引用name变量。(view function调用时，这个动态变量会被传递给该函数作为参数，所以两者名字可以不相同?).
+	//任何匹配静态部分网址(‘/user')的请求网址会被映射到这个路由，
+	//name变量接受该请求网址的动态部分(这里是user后的字符串)
+	return "&lt;p&gt;welcome {}!&lt;/p&gt;".format(name)
+					</pre>
+					动态组件申明: preciding_url/&lt;type:dynamic_compnent_name&gt; <br>
+					动态组件分类: <br>
+					<ul>
+						<li>
+							string(默认，类型可省略)
+						</li>
+						
+						<li>
+							int<br>
+							/id/&lt;int:id&gt;
+						</li>
+						<li>
+							float
+						</li>
+						<li>
+							path<br>
+							比较特殊，允许匹配分隔路径的forward slash('/')
+						</li>
+					</ul>
+				</p>
+				
+			</div>
+			
+			<div>
+				<h2>A Complete Application</h2>
+				<pre class="code">
+from flask import Flask
+
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+	return "&lt;p&gt;Welcome&lt;/p&gt;"
+				</pre>
+			</div>
+			
+			<div>
+				<h2>Development Web Server</h2>
+				<p>执行<kbd>flask run</kbd>激活调试版网络服务器。该命令查找环境变量<var>FLASK_APP</var>所指定的python文件中包含的applicaton instance.<br>
+				两种激活方式:<br>
+					<ul>
+						<li>
+							命令行式: flask run<br>
+							激活步骤:<br>
+							<ol>
+								<li>
+									export FLASK_APP=xx.py
+								</li>
+								<li>
+									flask run
+								</li>
+								<li>
+									进入http://localhost:5000,查看网站
+								</li>
+							</ol>
+						</li>
+						<li>
+							编程性激活:<br>
+							app.run()
+							<pre class="code">
+if __name__ == "__main__":
+	app.run()
+							</pre>
+						</li>
+					</ul>
+				</p>
+			</div>
+			
+			<div>
+				<h2>Dynamic Route</h2>
+				<pre class="code">
+from flask import Flask
+
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+	return "&lt;p&gt;Welcome&lt;/p&gt;"
+	
+@app.route('/user/&lt;name&gt;')
+def user(name):
+	return "&lt;p&gt;Welcome {}!".format(name)
+				</pre>
+			</div>
+			
+			<div>
+				<h2>Debug mode</h2>
+				<p>
+					通过设置环境变量FLASK_DEBUG=1来开启。<br>
+					该模式有两个特点:<br>
+					<ul>
+						<li>当文件被修改后，调试服务器自动restart.</li>
+						<li>调试，在网页上显示报错信息</li>
+					</ul>
+					<pre class="code">
+>> export FLASK_APP=app.py
+>> export FLASK_DEBUG=1
+>> flask run
+					</pre>
+				</p>
+				<p>
+					当通过app.run()激活时，FLASK_APP和FLASK_DEBUG环境变量是无法使用的，且默认调试模式关闭。通过app.run(debug=True)来手动开启调试模式。
+				</p>
+			</div>
+			
+			<div>
+				<h2>Command-Line Options</h2>
+				
+				<div>
+					<h3>flask shell</h3>
+					<p>
+						在该application的上下文下开启一个python会话。<br>
+						
+					</p>
+				</div>
+				<div>
+					<h3>flask run</h3>
+					参数: <br>
+					<ul>
+						<li>
+							flask run --host TEXT<br>
+							<strong>flask run --host 0.0.0.0</strong><br>
+							上诉指定的0.0.0.0参数极度有用，该命令允许与调试服务器处于同一局域网的任何计算机访问调试服务器，使用--with-threads选项打开调试服务器的基本并发能力,且数据传输能力惊人的快，福利福利。<br>
+								
+						</li>
+					</ul>
+				</div>
+			</div>
+			
+			<div>
+				<h2>The Request-Response Cycle</h2>
+				<div>
+					<h3>Application and Request Context</h3>
+					<p>
+						当flask接收到来自客户端的请求后，它需要产生一些view function需要的对象，例如<var>request</var>对象，用于封装http请求。
+					</p>
+					<p>
+						显而易见，flask可以给每一个view function声明一个参数用于接受要处理的request对象，但是每一个view function都要在函数申明里添加这个参数未免麻烦。更棘手地是，如果view function不仅仅需要request这么一个对象来填充实际的网络请求呢?
+					</p>
+					<p>
+						为了view function不至于因为大量不需要的参数而变得臃肿，flask引入了上下文(context)的概念: 临时性的让某个对象可以从全局被访问。
+						<pre class="code">
+from flask import request
+
+@app.route('/')
+def index():
+	user_agent = request.headers.get("User-Agent")
+	return "&lt;p&gt;your browser is {}&lt;/p&gt;".format(user_agent)
+						</pre>
+					</p>
+					<p>
+						上述代码中的request对象看上去像全局对象，实际上不可能是。在多线程服务器处理环境中，每一个线程可以在同一时刻处理来自不同客户端的不同请求，因此每一个线程看到的request对象肯定必须不一样。上下文赋予了flask让某一个变量只能在全局上被特定线程访问，而不干扰其他线程。
+					</p>
+					<p>
+						以下是我的个人理解:  可以将flask提供的request对象想象成全局性的空间，实际的某个网络请求可以被装载进这个全局空间里，并规定此时的全局空间只允许相符合的线程(view function)访问。一旦view function处理完这个请求，flask立即卸载全局空间里的该请求，并加载需要其他线程处理的请求。如此往复。
+					</p>
+					
+					<h3>Context</h3>
+					<p>
+						有两种上下文:
+					</p>
+					<ul>
+						<li>
+							application context
+						</li>
+						<li>
+							request context
+						</li>
+					</ul>
+					<p>
+						下图提供了两种上下文暴露的变量:
+						<img src="../images/context-and-var.png">
+					</p>
+					<p>
+						flask在将到来的某个请求分发到application instance之前激活了application context 和 request context,并在这个请求被正确处理后，移除这些contexts.只有激活了application context之后，current_application变量和g变量才对某个线程有效，request context也一样。如果没有相应的上下文就访问这些变量，会报错。
+						<img src="../images/load-context.png">
+					</p>
+					
+					<h3>Request Dispatching</h3>
+					<p>
+						Flask 接受到请求后，会根据这个请求中的url来查询URL映射表中对应的view function来处理这个请求。
+					</p>
+					<p>
+						url映射表长这个样子: <br>
+						<img src="../images/url-map.png"><br>
+						上述的(HEAD, OPTION, GET)是被route处理的请求方法(HEAD,OPTION, GET分别是独立的请求方法，其中HEAD和OPTION方法由flask自动管理)。http规范规定所有的请求必须包含一个请求方法，请求方法通常表明客户端要求服务器执行哪种action。flask可以规定每一个route可以处理的请求方法，所以以不同请求方法对请求同一网址，其请求可以被不同route处理。不指定处理何种请求方法的route,默认处理GET方法。
+					</p>
+					
+					<h3>The Request Object</h3>
+					<p>
+						以下是request对象中常用的方法和变量:<br>
+						<img src="../images/request-obj-1.png"><br>
+						<img src="../images/request-obj-2.png">
+					</p>
+
+					<h3>Request Hooks</h3>
+					<p>
+						请求钩子允许在每一个请求被处理之前或之后执行同一的处理，避免在每一个view function中编码重复的代码。
+					</p>
+					<p>
+						装饰器实现了请求钩子。以下是4类请求钩子: <br>
+						<ul>
+							<li>
+								before_request<br>
+								注册一个函数，该函数在每一个请求被处理之前运行。
+							</li>
+							<li>
+								before_first_request<br>
+								注册一个函数，该函数只在第一个请求被处理前执行，不会响应后续请求。在该函数里可以执行服务器初始化的任务。
+							</li>
+							<li>
+								after_request<br>
+								注册一个函数，该函数在每一个请求被处理后执行，但是只在该处理未抛出未处理的exception的前提下。
+							</li>
+							<li>
+								teardown_request<br>
+								类似after_request,但在抛出未处理的exception下，也可以处理此时的request.
+							</li>
+						</ul>
+					</p>
+					
+					<h3>Response</h3>
+					<p>
+						<strong>以元组构造view function的response.</strong><br>
+						view function通常返回作为响应的html文本。<br>
+						view function也可以返回html 加 状态码。flask默认返回200状态码，表示请求已被正确处理。<br>
+						返回不同的状态码:<br>
+						<pre class="code">
+@app.route('/')
+def index():
+	return "&lt;h1&gt;TEST&lt;/h1&gt;", 400         //这里返回400状态码，表示错误请求。
+						</pre>
+						也可以在加入第三个返回值(response code之后)，a dictionary of headers.
+					</p>
+					<p>
+						<strong>通过make_response()函数可以返回response对象。</strong><br>
+						<pre class="code">
+from flask import make_response
+
+@app.route('/')
+def index():
+	response = make_response("&lt;p&gt;hello world&lt;/p&gt;")
+	response.set_cookie("answer", "42")
+	return response
+						</pre>
+					</p>
+					<p>
+						以下是常用的response对象的方法和变量: <br>
+						<img src="../images/response.png">
+					</p>
+					
+					<p>
+						<strong>重定向(redirect)</strong>是一种特殊的响应，它不包含页面内容，只给浏览器新的目标url.<br>
+						flask提供了一个帮助函数用以产生重定向: <br>
+						<pre class="code">
+from flask import redirect
+
+@app.route('/')
+def index():
+	return redirect("https://www.baidu.com")
+						</pre>
+					</p>
+					<p>
+						另一种特殊的响应是错误反馈页面，使用函数abort().<br>
+						<pre class="code">
+from flask import abort
+							
+@app.route('user/&lt;string:name&gt;')
+def user(name):
+	if name != "manson":
+		abort(404)   //返回错误页面。这里与redirect不同的是，return abort(404)是错误的格式。
+	else:
+		return "&lt;p&gt;Welcome {}!&lt;/p&gt;".format(name)
+						</pre>
+						值得注意的是，abort()执行完后，不会将控制返回给view function,因为它抛出了一个exception.
+					</p>
+					
+				</div>
+			</div>   <!-- 与请求和响应相关的话题 -->
+				
+			<div>
+				<h2>Flask Extensions</h2>
+				<p>
+					flask本身是为了扩展而设计的。它自身不包含重要的功能，比如数据库，用户验证等。你可以选择任何适合你项目的模块通过flask的接口集成到flask中，或者自己写相应的模块。<br>
+					
+				</p>
+			</div>
+		</div>
+		
+		<hr>
+		<div id="extend">
+			<h1 class="center">扩展知识</h1>
+			<p>
+				<ul>
+					<li>
+						python装饰器最典型的应用是将python函数注册为函数处理器，当特定事件触发时，会执行该处理器。
+					</li>
+					<li>
+						网页错误码:<br>
+						<ul>
+							<li>404<br>
+								网页不存在。
+						</ul>
+					</li>
+					
+					<li>
+						flask定位本地资源:<br>
+						&lt;img src="{{ url_for('static', filename='images/test.jpg') }}"&gt;<br>
+						上述加载位于项目根目录的static文件夹下的images文件下的test.jpg.<br>
+						其中static是flask预定义的route.<br>
+						加载其他本地资源类似。
+					</li>
+					<li>
+						flask手动激活上下文: <br>
+						<ul>
+							<li>
+								手动激活application context:<br>
+								<pre class="code">
+from app import app
+from flask import current_app
+
+app_ctx = app.app_context()
+app_ctx.push()  //激活app context
+print(current_app.name)    //访问属于app context的上下文变量
+app_ctx.pop()   //卸载application context
+								</pre>
+							</li>
+						</ul>
+						快速部署上下文:
+						<ul>
+							<li>
+								手动快速部署application context:<br>
+								<pre class="code">
+from app import app
+from flask import current_app
+
+with app.app_context():
+	//访问application context下的上下文变量。
+								</pre>
+							</li>
+							<li>
+								快速手动部署request context:<br>
+								<pre class="code">
+from app import app
+from flask import current_app, request
+
+with app.app_context():
+	with current_app.test_request_context():   //激活request context.
+		//使用request context.
+								</pre>
+							</li>
+						</ul>
+					</li>
+				</ul>
+			</p>
+		</div>
+	</body>
+
+</html>

@@ -1,0 +1,36 @@
+.center {
+	text-align: center;
+	margin: 0 auto;
+}
+
+div#content>div{
+	margin: 20vh auto;
+}
+
+div#content>div>div {
+	width: 90%;
+	margin: 5px auto;
+	border: solid 2px black;
+}
+pre.code {
+	width: 80vw;
+	margin: 10px auto;
+	border: solid 4px black;
+	background-color: #7788A2;
+	font-weight: bold;
+	font-family: monospace;
+	overflow: auto;
+}
+
+hr {
+
+}
+
+p {
+	text-indent: 25px; 
+}
+
+img {
+	width: 100%;
+	margin: 10px auto;
+}

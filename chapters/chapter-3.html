@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Chapter 3: Templates</title>
+		<meta charset="utf-8">
+		<link rel="stylesheet" href="../style.css">
+	</head>
+
+	<body>
+		<div id="content">
+			<h1 class="center">Chaper 3: Templates</h3>
+			<p>
+				View function混合了业务逻辑和渲染逻辑，这让项目难于理解和维护。<br>
+				templates将渲染逻辑分离出,单独负责页面渲染。<br>
+			</p>
+			<p>
+				template文件包含了响应的文本和占位符变量(placeholder variable)。这些变量代表了网页中的动态部分，只在request context下可知。<br>
+				用具体值取代template中的占位变量，并返回最终响应页面的整个过程叫做渲染。<br>
+				flask使用jinja2引擎处理模板渲染任务。
+			</p>
+			
+			<div>
+				<h2>The Jinja2 Template Engine</h2>
+				<p>
+					在template中使用变量: <br>
+					<pre class="code">
+&lt;p&gt;this is a variable {{ var_name }}.&lt;/p&gt;
+					</pre>
+				</p>
+				
+				<h2>Rendering Templates</h2>
+				<p>
+					flask默认在项目根目录下的templates子目录下寻找模板文件。
+					<pre class="code">
+from flask import render_template
+
+@app.route('/')
+def index():
+	return render_template("index.html")   //project_root/templates/index.html
+	
+@app.route('user/&lt;name&gt;')
+def user(name):
+	return render_template("user.html", name=name)  //用参数name的值取代模板文件中占位变量name。
+	//左边的name代表模板中的占位变量，右边的name代表函数参数name.通常左右两边的变量名相同。
+					</pre>
+				</p>
+				
+				<h2>Variables</h2>
+				<p>
+					模板中的{{ name }}代表占位变量,该变量在模板渲染时会被实际值替代。
+				</p>
+				<p>
+					jinja2自动识别模板中的变量类型。<br>
+					<pre class="code">
+&lt;p&gt;字典: {{ mydict['mykey'] }} &lt;/p&gt;
+&lt;p&gt;列表: {{ mylist[3] }} &lt;p&gt;
+&lt;p&gt;以变量作为索引值的列表: {{ mylist[var_index] }} &lt;/p&gt;
+&lt;p&gt;调用对象的方法: {{ myobj.some_method() }} &lt;/p&gt;
+					</pre>
+				</p>
+				<p>
+					可以通过filter来修改变量: <br>
+					<pre class="code">
+Hello, {{ name|capitalize }}        //这里的capitalize过滤器将name的值转化成大写形式。
+					</pre>
+					以下是常用的varible filter: <br>
+					<img src="../images/variable-filter.png">
+				</p>
+				<p>
+					上述的safe过滤器比较有趣。处于安全原因，jinja2默认转义所有的占位变量。比如var=<q>&lt;p&gt;text&lt;/p&gt;</q>,jinja2会将变量转移成<q>&amp;lt;p&amp;gt;text&amp;lt;/p&amp;gt;<q>,当浏览器接受到该变量后，它只会显示该html片段的代码形式，而不是渲染成段落。
+				</p>
+				<p>
+					而safe过滤器取消了转义，使得上述变量可以正确的被渲染成html效果。
+				</p>
+				<p>
+					jinja2默认的这种所见即所得的特点结合python的文件读取可以用在点击某个链接显示html代码片段的场景，而不需要使用view-source去查看网页源码，很适合我写笔记。
+				</p>
+				
+				<h2>Control Structure</h2>
+				<p>
+					jinja2提供了一些控制机制用于修改template的渲染顺序。控制语句有{% 和 %}包含。jinja2的文件搜索依据的路径规则可能默认是视templates为根目录。
+				</p>
+				<p>
+					选择语句: <br>
+					<pre class="code">
+{% if user %}
+	Hello {{ user }}!
+{% else %}
+	Hello Stranger!
+{% endif %}
+					</pre>
+				</p>
+				<p>
+					循环语句: 渲染列表<br>
+					<pre class="code">
+<ul>
+	{% for comment in comments %}
+		<li>{{ comment }}</li>
+	{% endfor %}
+</ul>
+					</pre>
+				</p>
+				<p>
+					jinja2也支持宏(macro),类似于python函数:<br>
+					<pre class="code">
+{% macro render_comment(comment) %}
+	&lt;li&gt;{{ comment }}&lt;/li&gt;
+{% endmacro %}
+
+&lt;ul&gt;
+	{% for comment in comments %}
+		{{ render_comment(comment) }}    &lt;!--注意这里的宏调用也是被{{ 和 }}包围的--&gt;
+	{% endfor %}
+&lt;/ul&gt;
+					</pre>
+					将宏写入以.jinja扩展名结尾的文件中，需要时通过import命令导入,该文件必须在templates文件夹下，如放在templates/macros/macros.jinja,则通过import 'macros/macros.jinja' as macro 导入。以templates为根目录。<br>
+					<pre class="code">
+// 定义
+// templates/macros/macros.jinja
+{% macro render_image(image_path) %}
+	&lt;li&gt;{{ image_path }}&lt;/li&gt;
+{% endmacro %} 
+
+
+// 引用
+// templates/index.html
+
+{% import 'macros/macros.jinja' as macros %}
+
+&lt;ul&gt;
+	{% for image in images %}
+		{{ macros.render_image(image) }}
+	{% endfor %}
+&lt;/ul&gt;
+					</pre>
+				</p>
+				
+				<p>
+					部分模板重用:<br>
+					使用include语句，路径也是相对于导入到的模板文件.<br>
+					<pre class="code">
+			
+// 重用navigaton面板
+// templates/reuse/navigation.html
+&lt;div&gt;
+	&lt;ul&gt;
+		&lt;li&gt;previous&lt;/li&gt;
+		&lt;li&gt;top&lt;/li&gt;
+		&lt;li&gt;next&lt;/li&gt;
+	&lt;/ul&gt;
+&lt;/div&gt;
+
+
+//导入模板
+// templates/index.html
+{% include 'reuse/navigation.html' %}
+					</pre>
+				</p>
+				
+				<div>
+					<h2>使用extends语句来重用模板</h2>
+					<p>
+						{% extends parent_path %}语句中，parent_path是相对路径，视templates为根目录。规则与import一致。 
+					</p>
+					<p>
+						类似于类继承。{% block block_name %}和{% endblock %}用于定义可被覆盖的block,父类模板定义默认block,子类模板继承父类模板，并声明相同的block来达到复写的功能。{{ super() }}表示保留父类模板的某个block,后续子类模板声明的same block将拥有父类默认的block的内容。<br>
+							
+						<pre class="code">
+// 首先定义基本模板base.html,位于templates/下
+&lt;!DOCTYPE&gt;
+&lt;html&gt;
+	&lt;head&gt;
+		&lt;title&gt;
+			{% block title %}
+				Test
+			{% endblock %}
+		&lt;/title&gt;
+		
+		{% block style %}
+			&lt;style&gt;
+				.center {
+					margin: 0 auto;
+				}
+			&lt;/style&gt;
+		{% endblock %}
+
+	&lt;/head&gt;
+	
+	&lt;body&gt;
+		{% block body %}
+			&lt;p&gt; test paragrapha. &lt;/p&gt;
+		{% endblock %}
+	&lt;/body&gt;
+&lt;/html&gt;
+						</pre>
+						继承并复写block: <br>
+						<pre class="code">
+//子类模板index.html,位于templates/下
+{% extends 'base.html' %}   //继承父类模板
+{% block title %} My Personnal Website {% endblock %}
+
+{% block style %}
+	{{ super() }}     //继承父类模板中style block中的原有内容。
+	&lt;style&gt;     //子类模版对父类模板中的style block进行扩展。
+		p {
+			background-color: pink;
+		}
+	&lt;/style&gt;
+{% endblock %}
+
+{% block body %}
+	&lt;h1&gt; My Personnal Website &lt;/h1&gt;
+	&lt;p&gt; My paragraph. &lt;/p&gt;
+{% endblock %}
+						</pre>
+					</p>
+				</div>
+			</div>
+			
+			<div>
+				<h2>Bootstrap Integration With Flask-Bootstrap</h2>
+				<p>
+					bootstrap是开源的前端框架，用于提供兼容多种平台的用户界面组件。
+				</p>
+				<p>
+					在flask application instance被创建的同时，flask extension也会被加载。
+				</p>
+				<p>
+					flask-bootstrap 初始化<br>
+					<pre class="code">
+from flask-bootstrap import Bootstrap
+
+bootstrap = Bootstrap(app)
+					</pre>
+					flask extension通常从flask-&lt;extension_name&gt;包中导入。
+				</p> 
+			</div>
+		</div>
+		
+		<div id="extend">
+			<h1>扩展知识</h1>
+			<ul>
+				<li>
+					自动扫描并显示图片:<br>
+					模板index.html文件:<br>
+					<pre class="code">
+{% for image in images %}
+	&lt;img src="static/images/{{ image }}"&gt;      //这里使用相对于项目根目录的相对路径来引用图片。
+{% endfor %}
+					</pre>
+					app.py文件:<br>
+					<pre class="code">
+import os
+			
+@app.route('/')
+def index():
+	images = os.listdir('static/images')
+	return render_template("index.html", images=images)
+					</pre>
+				</li>
+				
+				<li>
+					将所需静态文件分类放入项目根目录下的static子文件夹下，通过基于项目根目录的相对路径就可以引用static下的所有文件，url_for只是一个简便的生成路径的函数.<br>
+					但这种相对路径只在指向static下的文件时，该路径才有效，指向非static文件夹下的相对路径，flask无法识别.原因未知(可能和flask预定义了static route有关)
+				</li>
+			</ul>
+		</div>
+	</body>
+
+</html>

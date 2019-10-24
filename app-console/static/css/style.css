@@ -1,0 +1,15 @@
+video {
+	width: 80vw;
+	height: 100vh;
+	margin: 0 auto;
+}
+
+div#navigation li {
+	float: left;
+	background-color: pink;
+	margin: 0 5px;
+}
+
+div#navigation ul {
+	list-style-type: none;
+}
