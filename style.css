@@ -3,14 +3,15 @@
 	margin: 0 auto;
 }
 
-div#content>div{
+div#content>div, div#content>section{
 	margin: 20vh auto;
+	border: solid 2px black;
 }
 
-div#content>div>div {
+div#content>div>div, div#content>section>section {
 	width: 90%;
 	margin: 5px auto;
-	border: solid 2px black;
+	border: dashed 2px black;
 }
 pre.code {
 	width: 80vw;

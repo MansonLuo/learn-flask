@@ -93,11 +93,11 @@ Hello, {{ name|capitalize }}        //这里的capitalize过滤器将name的值�
 				<p>
 					循环语句: 渲染列表<br>
 					<pre class="code">
-<ul>
+&lt;ul&gt;
 	{% for comment in comments %}
-		<li>{{ comment }}</li>
+		&lt;li&gt; {{ comment }} &lt;/li&gt;
 	{% endfor %}
-</ul>
+&lt;/ul&gt;
 					</pre>
 				</p>
 				<p>
@@ -137,7 +137,7 @@ Hello, {{ name|capitalize }}        //这里的capitalize过滤器将name的值�
 				
 				<p>
 					部分模板重用:<br>
-					使用include语句，路径也是相对于导入到的模板文件.<br>
+					使用include语句，路径也是相对于templates文件夹<br>
 					<pre class="code">
 			
 // 重用navigaton面板
@@ -232,11 +232,56 @@ from flask-bootstrap import Bootstrap
 
 bootstrap = Bootstrap(app)
 					</pre>
-					flask extension通常从flask-&lt;extension_name&gt;包中导入。
+					flask extension通常从flask-&lt;extension_name&gt;包中导入， 并且大多数的flask extension拥有统一的实例化模版，一般是向扩展类的构造器传入application实例。<br>
+					一旦flask-bootstrap实例化，则应用程序就可以访问其一切资源。<br>
+					以下是使用例子: <br><br>
+						
+					<img src="../images/chapter3/flask-bootstrap-base-usecase.png" alt="flask-bootstrap base usecase"><br>
+					上述图片中的bootstrap/base.html文件提供了一个基本的网页骨架，该骨架包含了所有的bootstrap 所需的css 和 js文件。user.html使用的三个block: title, navbar, content皆由base.html定义。<br><br>
+					以下是base.html提供的预定义blocks.<br>
+					<img src="../images/chapter3/blocks-for-base-html.png" alt="predefined blocks within flask_bootstrap by base.html"><br>
+					上述表格中的大部分blocks由flask_bootstrap自己使用，子类模板继承时，必须使用{{ super() }}语句来保留blocks中原导入的css和js文件:<br>
+					<pre class="code">
+{% extends 'bootstrap/base.html' %}
+
+{% block styles %}
+	{{ super() }}
+	&lt;link href='..'&gt;
+	...
+{% endblock styles %}
+					</pre>
+				
 				</p> 
-			</div>
-		</div>
+			</div>  <!--END of integration of bootstrap-->
 		
+			<div id='custom-error-pages'>
+				<h2>Custom Error Page</h2>
+				<p>
+					让错误页面与正常页面的风格相一致。<br>
+					使用app.errorhandler装饰器，为应用提供个性化的错误页面。<br>
+					<pre class="code">
+@app.errorhandler(404)
+def page_not_found(e):
+	return render_template('404.html'), 404  #必须提供与错误处理器相一致的响应码作为第二个返回参数。
+	
+@app.errorhandler(500)
+def internal_server_error(e):
+	return render_template('500.html'), 500
+					</pre>
+				</p>
+			
+				<p>
+					至于错误页面的代码，可以写一个page-base.html模版，该模版继承自bootstrap/base.html, 主要内容是统一的导航栏。 <br>
+					代码图片如下:<br>
+					<img src="../images/chapter3/bootstrap-custom-base-page-1.png"><br>
+					<img src="../images/chapter3/bootstrap-custom-base-page-2.png"><br>
+					<img src="../images/chapter3/custom-404-page.png">
+					
+				</p>
+			</div> <!-- END of custom error pages -->
+		
+		</div> <!-- END of main content -->
+			
 		<div id="extend">
 			<h1>扩展知识</h1>
 			<ul>
@@ -262,6 +307,17 @@ def index():
 				<li>
 					将所需静态文件分类放入项目根目录下的static子文件夹下，通过基于项目根目录的相对路径就可以引用static下的所有文件，url_for只是一个简便的生成路径的函数.<br>
 					但这种相对路径只在指向static下的文件时，该路径才有效，指向非static文件夹下的相对路径，flask无法识别.原因未知(可能和flask预定义了static route有关)
+				</li>
+				
+				<li>
+					jinja block语句的新使用方式:<br>
+					<pre class="code">
+#base.html
+
+{% block content %}
+SOMETHING..
+{% endblock content %}  #这种block语句的使用形式方便代码阅读。
+					</pre>
 				</li>
 			</ul>
 		</div>
