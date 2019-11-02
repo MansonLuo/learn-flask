@@ -279,6 +279,154 @@ def internal_server_error(e):
 					
 				</p>
 			</div> <!-- END of custom error pages -->
+				
+			<div id="links">
+				<h2>Links</h2>
+				
+				<p>
+					当应用程序的route增多时，最终都需要Links来统一地链接所有的页面。比如navigation bar.<br>
+					使用url_for为动态路由,生成url,而不是硬编码其url,这样一旦route被修改，这些写死的url就会broke.
+				</p>
+				<p>
+					url_for函数的用法:<br>
+					1: 简单的用法是生成route function所对应的url.<br>
+					<ul>
+						<li>
+							url_for(str_view_function_name):<br>
+							接受app.route装饰器定义的函数名字为参数。
+						</li>
+						<li>
+							url_for(str_endpoint_name):<br>
+							接受app.add_url_route方法中传入的endpoint name作为它的参数。
+						</li>
+					</ul>
+					<pre class="code">
+from flask import url_for
+
+@app.route('/')
+def index():
+	return 'hello'
+	
+url_for('index')   #url为 '/'， 相对路径
+url_for('index', _external=True)  #url为 http://localhost:5000， 绝对路径
+					</pre>
+					
+					2: 为动态路由生成url<br>
+						<ul>
+							<li>
+								 在url_for里使用keyword参数为动态变量url指定特定值
+							</li>
+							<li>
+								如果指定了非动态url变量的keyword变量，则以query string的形式存在于url中。
+							</li>
+						</ul>
+						
+						<pre class="code">
+from flask import url_for
+
+@app.route('/user/<name>')
+def register(name):
+	return 'register'
+
+#生成动态url
+url_for('register', name="manson", _external=True)  #http://localhost:5000/user/manson
+
+#多余的非动态部分的参数会被添加到query string中。
+url_for('register', name="manson", page=2, version=1, _external=True)  #http://localhost:5000/user/manson?page=2&version=1
+						</pre>
+				</p>
+			</div> <!--END of links -->
+				
+			<div id="static_files">
+				<h2>Static files</h2>
+				
+				<p>
+					flask 原生支持静态文件，比如图片， 文本， 视频等，通过预定义一个特殊的static路由实现: '/static/<filename>'<br>
+					<pre class="code">
+#生成url  http://localhost:5000/static/css/style.css
+url_for('static', filename="css/style.css", _external=True)
+					</pre><br>
+					因此，flask会自动在项目的根目录寻找static文件下的静态文件，可以在static文件下创建子目录来存放各类静态文件。
+				</p>
+				
+				<p>
+					以下是利用static路由来在浏览器的address bar上显示favorite.icon的例子。<br>
+						
+					<pre class="code">
+{% block head %}
+	{{ super() }}
+	&lt;link rel="short icon" href="{{ url_for('static', filename='favorite.ico') }}" type="image/x-icon"&gt;
+	&lt;link rel="icon" href="{{ url_for('static', filename='favorite.ico') }}" type="image/x-icon"&gt;
+{% endblock head %}
+					</pre>
+				</p>
+			</div> <!-- END of static files-->
+				
+			<div id="localization of date and time with flask-moment">
+				<h2>Localization of Date and Time with flask-moment</h2>
+				
+				<p>
+					使用统一的时间单位: UTC, 来获取每一位不同区域用户的local time and date, 渲染成它们想要的日期格式。<br>
+					一种优美的方式是: 服务器发送统一的UTC格式的时间到浏览器，由浏览器将其转换成local time 并且格式化成用户期望的时间表示形式。<br>
+					flask-moment扩展是将moment.js集成到了jinja2引擎中。
+				</p>
+				<p>
+					1: 初始化flask-moment扩展: <br>
+					<pre class="code">
+from flask_moment import Moment
+moment = Moment(app)
+					</pre>
+					
+					&nbsp;&nbsp;&nbsp;&nbsp;2: 加载flask_moment所需的依赖:<br>
+						flask_moment依赖moment.js以及jquery.js, 除了手动使用script标签加载外，flask_bootstrap已经集成了jquery.js,所以只需要手动加载moment.js就可以了。<br>
+							
+					<pre class="code">
+#templates/base.html importing Moment.js library
+
+{% extends 'bootstrap/base.html' %}
+.
+.
+.
+
+{% block scripts %}
+	{{ super() }}
+	
+	{{ moment.include_moment() }}  #moment对象是flask在jinja中预定义的对象，之所以有这个手动添加moment.js的方法，我猜是不禁止用户使用script标签来手动加载moment.js
+{% endblock %}
+					</pre>
+					
+					&nbsp;&nbsp;&nbsp;&nbsp;3: 一个使用flask_moment的示例:<br>
+					<pre class="code">
+#hello.py adding a datetime variable
+
+from datetime import datetime
+
+@app.route('/')
+def index():
+	return render_template('index.html', current_time=datetime.utcnow())
+	
+	
+	
+#templates/index.html timestamp rendering
+
+&lt;p&gt;
+	The local date and time is {{ moment(current_time).format('LLL') }}.   #format函数的参数可以是'L' ~ 'LLLL'四个不同详细程度的格式。
+&lt;/p&gt;
+&lt;p&gt;
+	That was {{ moment(current_time).fromNow(refresh=True) }}  #渲染时间戳，以a minute ago,然后是two minutes ago等等形式表示。
+&lt;/p&gt;
+					</pre>
+					
+					&nbsp;&nbsp;&nbsp;&nbsp;4: 以不同国家的语言渲染时间戳:<br>
+					<pre class="code">
+{% block scripts %}
+	{{ super() }}
+	{{ moment.include_moment() }}
+	{{ moment.locale('es') }}
+{% endblock %}
+					</pre>
+				</p>
+			</div> <!-- END of Localization of date and time with flask-moment -->
 		
 		</div> <!-- END of main content -->
 			
