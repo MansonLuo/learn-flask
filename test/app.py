@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, session, redirect, url_for
 from flask_bootstrap import Bootstrap
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField
@@ -19,9 +19,10 @@ def index():
     form = NameForm()
 
     if form.validate_on_submit():
-        name = form.name.data
+        session['name'] = form.name.data
         form.name.data = ''
-    return render_template('index.html', form=form, name=name)
+        return redirect(url_for('index'))
+    return render_template('index.html', form=form, name=session.get('name'))
 
 if '__main__' == __name__:
     app.run(host='0.0.0.0', port=5000, debug=True)
