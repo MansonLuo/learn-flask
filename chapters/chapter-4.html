@@ -3,10 +3,63 @@
 	<head>
 		<title>Chapter 4: Web Forms</title>
 		<meta charset="utf-8">
+		<link rel="stylesheet" href="../style.css">
 	</head>
 
 	<body>
+		<h1>Chapter 4: Web Forms</h1>
+		
+		<div id="content">
+			<section id="intro">
+				<h2>简介</h2>
+				<p>
+					html标签可以用来构建表格。request对象包含了用户通过浏览器发送的所有信息，特别是post请求，包含了表单数据。<br>
+					flask-wtf扩展简化了表单的创建和验证提交的表单数据。
+				</p>
+				
+			</section> <!-- END of section intro -->
+				
+			<section id="configuration">
+				<h2>Configuration</h2>
+				<p>
+					flask_wtf不需要在application level进行配置，只需要配置secret key就可。secret key用于保护表单免受攻击者伪造。以下是配置代码: <br>
+						<pre class="code">
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'hard to guess string'
+						</pre>
+				</p>
+				<p>
+					app.config类似于字典，用于存储配置变量。可以使用它从文件， environment,或者配置对象导入配置信息。
+				</p>
+				<p>
+					secret string必须保存在environment variable中，以提高安全性。
+				</p>
+			</section> <!-- END of section configuration -->
+				
+			<section id="form-classes">
+				<h2>Web Forms</h2>
+				<p>
+					flask-wtf使用继承于FlaskForm类的子类表示表单，该子类包含一系列表示表单字段的字段类型对象变量，每一个字段对象可关联多个validator.validator用于检测由用户提交的数据是否合法。<br>
+						
+					<pre class="code">
+# a simple web form that has a text field and a submit button.
 
+from flask_wtf import FlaskForm
+from wtforms import StringField, SubmitField
+from wtforms.validator import DateRequired
+
+class NameForm(FlaskForm):
+	name = StringField('What is your name?', validators=[DateRequired()])
+	submit = SubmitField('submit')
+	
+					</pre>
+				</p>
+			</section> <!-- END of section form-classes -->
+		</div>  <!-- END of main content -->
+
+		<div id="extend">
+
+		</div> <!-- END of extend -->
 	</body>
 
 </html>
