@@ -54,7 +54,126 @@ class NameForm(FlaskForm):
 	
 					</pre>
 				</p>
+				
+				<p>
+					wtforms支持的一系列html fields<br>
+					<img src="../images/chapter4/form-fields-1.png">
+					<img src="../images/chapter4/form-fields-2.png"><br>
+					wtforms validators<br>
+					<img src="../images/chapter4/validators.png">
+				</p>
 			</section> <!-- END of section form-classes -->
+				
+			<section id="render-forms">
+				<h2>HTML Rendering of Forms</h2>
+				
+				<p>
+					表单字段在template中是可调用的，会渲染自身。假设view function传递form对象给占位变量form,以下是渲染表单的代码:<br>
+						<pre class="code">
+&lt;form method="POST"&gt;
+	{{ form.hidden_tag() }}  #flask定义的隐藏字段，用与跨站表单伪造保护。
+	{{ form.name.label }} {{ form.name() }}   #这里是form.name()， 而不是form.name.这是字段可调用性的体现。
+	{{ form.submit() }}
+&lt;/form&gt;
+						</pre>
+				</p>
+				
+				<p>
+					在渲染表单字段的函数调用中添加的任何keyword arguments都被转换成html 标签的属性。如此，可以传参id,class属性，或定义style属性。<br>
+					<pre class="code">
+&lt;form method="POST"&gt;
+	{{ form.hidden_tag() }}
+	{{ form.name.label }} {{ form.name(id="my-text-field") }}
+	{{ form.submit() }}
+&lt;/form&gt;
+					</pre>
+				</p>
+				<p>
+					上述方式还是有点麻烦，flask_bootstrap提供了一种快速渲染flask_wtf 表单的方式。上诉表格可使用如下代码渲染:<br>
+					<pre class="code">
+{% import "bootstrap/wtf.html" as wtf %}
+{{ wtf.quick_form(form) }}
+					</pre>
+					<br>
+					quick_form接受flask_wtf FlaskForm对象，使用bootstrap默认风格渲染。
+				</p>
+				<p>
+					以下是完整的index.html<br>
+					<pre class="code">
+# index.html
+
+{% extends 'bootstrap/base.html' %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% block title %}Flasky {% endblock %}
+
+{% block page_content %}
+	&lt;div class="page-header"&gt;
+		&lt;h1&gt;Hello, {% if name %} {{ name }} {% else %} Stranger {% endif %}! &lt;/h1&gt;
+		{{ wtf.quick_form(form) }}  # 注意这里使用的是{{和}}，而不是{% %}
+	&lt;/div&gt;
+{% endblock %}
+					</pre>
+				</p>
+			</section> <!-- END of render forms -->
+				
+			<section id="form-handle">
+				<h2>Form Handling in View Function</h2>
+				<p>
+					以下是处理表单的代码:<br>
+					<pre class="code">
+@app.route('/', methods=['POST', 'GET'])
+def index():
+	name = None
+	form = NameForm()
+	
+	if form.validate_on_submit():  #当表单被提交，并且表单数据通过所有validators时，返回True。该方法决定表单是被渲染还是被处理
+		name = form.name.data
+		form.name.data = ''
+	return render_template('index.html', form=form, name=name)
+					</pre>
+				</p>
+			</section> <!-- END of form handle -->
+				
+			<section id="redirection-and-user-sessions">
+				<h2>Redirection and User Sessions</h2>
+				
+				<p>
+					上述版本存在一个问题，当你提交表单后再刷新页面，浏览器会提示你是否重新提交表单。<br>
+					这是因为当刷新页面时，浏览器会重复最后一次request.当最后一次request是post时，会造成表单重复提交的结果，所以浏览器会提示你。
+				</p>
+				<p>
+					可以使用redirection解决这种问题。redirection是一种特殊的包含url的响应。当浏览器接受到一个redirection时，它会发送一个包含redirection中的url的GET请求，该url是最终显示的页面。
+				</p>
+				<p>
+					但是redirecition带来了一个新问题:无法访问被结束的请求中的数据。一旦request终止，表单数据也随之被销毁。因此需要将POST请求中的表单数据保存下来，以供redirection访问。
+				</p>
+				<p>
+					可以将请求中的数据保存在user sessions中，以在所有出现过的请求中共享。user session是一种特定于每一个连接的客户端的私有存储。可以通过request.session访问，user session类似于python 字典。
+				</p>
+				<p>
+					user session 默认存储在客户端的使用secret key 加密的cookie里，任何伪造cookie都会渲染错误签名，以致会话验证失败。
+				</p>
+				<p>
+					以下是实现了redirection 和 user session的新版本: <br>
+						
+					<pre class="code">
+# hello.py
+
+from flask import Flask, render_template, session, redirect, url_for
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+	form = NameForm()
+	if form.validate_on_submit():
+		session['name'] = form.name.data
+		form.name.data = ''
+		return redirect(url_for('index'))
+		
+	return render_template('index.html', form=form, name=session.get('name'))  #一旦key不存在，session.get会返回None
+					</pre>
+				</p>
+			</section> <!-- END of redirection and user sessions -->
 		</div>  <!-- END of main content -->
 
 		<div id="extend">
