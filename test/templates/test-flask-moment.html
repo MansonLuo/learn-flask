@@ -1,0 +1,16 @@
+{% extends 'bootstrap/base.html' %}
+
+{% block title %} test of flask-moment {% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{{ moment.include_moment() }}
+{{ moment.locale('zh') }}
+{% endblock %}
+
+{% block content %}
+<h1>Test of Flask-moment</h1>
+
+<p>The local date and time is {{ moment(current_time).format('LLL') }}.</p>
+<p>That was {{ moment(current_time).fromNow(refresh=True) }}</p>
+{% endblock %}
