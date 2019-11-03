@@ -1,1 +1,9 @@
-<p>For test</p>
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{{ wtf.quick_form(form) }}
+
+{% if name %}
+	<p>hello {{ name }} </p>
+{% else %}
+	<p>hello strange</p>
+{% endif %} 
