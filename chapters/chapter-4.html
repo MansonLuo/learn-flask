@@ -46,7 +46,7 @@ app.config['SECRET_KEY'] = 'hard to guess string'
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField
-from wtforms.validator import DateRequired
+from wtforms.validators import DateRequired
 
 class NameForm(FlaskForm):
 	name = StringField('What is your name?', validators=[DateRequired()])
@@ -174,6 +174,53 @@ def index():
 					</pre>
 				</p>
 			</section> <!-- END of redirection and user sessions -->
+				
+			<section id="message flashing">
+				<h2>Message Flashing</h2>
+				<p>
+					当用户请求完成，这时很有必要给用户一个状态更新。这种更新可以是需要用户确认的消息，警告，或者一个错误。举个例子，比如用户登陆失败时，登陆页面的登陆表单下方会出现登陆失败的原因，比如用户名不存在，密码错误等。
+				</p>
+				<p>
+					可以使用flask的核心功能之一的flash()函数实现这种目的。<br>
+					<pre class="code">
+# hello.py flashed messages
+
+from flask import Flask, render_template, session, redirect, url_for, flash
+
+@app.route('/', methods=['POST', 'GET'])
+def index():
+	form = NameForm()
+	if form.validate_on_submit():
+		old_name = session.get('name')
+		if old_name is not None and old_name != form.name.data:
+			flash('Looks like you have changed your name!')
+		session['name'] = form.name.data
+		return redirect(url_for('index'))
+	return render_template('index.html', form=form, name=session.get('name'))
+					</pre>
+				</p>
+				<p>
+					最好在base.html模版中渲染flashed message,使得所有页面都渲染上flashed message.<br>
+					可以使用get_flashed_messages()函数获得flashed messages.<br>
+					<pre class="code">
+{% block content %}
+
+&lt;div class="container"&gt;
+	{% for message in get_flashed_messages() %}
+		&lt;div class="alert alert-warning"&gt;
+			&lt;button type="button" class="close" data-dismiss="alert"&gt;&times;&lt;/button&gt;
+			{{ message }}
+		&lt;/div&gt;
+	{% endfor %}
+&lt;/div&gt;
+
+{% endblock %}
+					</pre>
+				</p>
+				<p>
+					上述之所以用loop，是因为可能获取一系列处于队列中的flashed messages.一旦flashed messages被获取，那么它们也就从队列中丢弃，因此下一次的get_flashed_messages()调用将不会获取到任何flashed messages.
+				</p>
+			</section> <!-- END of message flashing -->
 		</div>  <!-- END of main content -->
 
 		<div id="extend">
