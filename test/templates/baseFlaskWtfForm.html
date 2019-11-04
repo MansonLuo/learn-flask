@@ -1,0 +1,16 @@
+{% extends 'bootstrap/base.html' %}
+
+{% block title %} test for base flask_wtf form {% endblock %}
+
+{% block content %}
+	<p>
+		Hello {% if name %} {{ name }} {% else %} Stranger {% endif %}!
+	</p>
+
+	<form method="POST", action="/test/baseFlaskWtfForm">
+		{{ form.hidden_tag() }}
+		{{ form.name.label }} {{ form.name() }}
+		{{ form.submit() }}
+	</form>
+
+{% endblock %}
