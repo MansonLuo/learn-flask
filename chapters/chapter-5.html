@@ -1,0 +1,143 @@
+<DOCTYPE html>
+<html>
+	<head>
+		<title>Chapter 5: Database</title>
+		<meta charset="utf-8">
+		<link rel="stylesheet" href="../style.css">
+	</head>
+
+	<body>
+		<h1>Chapter 5: Databases</h1>
+		<div id="content">
+			<section id="intro">
+				<h2>简介</h2>
+				<p>
+					数据库用于以有组织的方式存储应用程序数据，当程序需要数据时，会执行查询命令来获取部分数据。<br>
+					当前比较流行的有两种数据库: SQL  database 和 NoSQL database.
+				</p>
+			</section> <!-- END of intro -->
+			<section id="sqlDatabases">
+				<h2>SQL Databases</h2>
+				<p>
+					关系数据库使用table来存储数据。table对应用程序领域的不同实体进行建模。例如，菜单管理应用程序的数据可能拥有customers, products, 和 orders table.
+				</p>
+				<p>
+					table拥有固定数量的columns和可变的rows.columns定义由table表示的实体的数据属性。比如，一个customers table可能定义了如下columns: name, address, phone等等。每一个row定义了一条数据记录，数据记录可能只对某些columns或全部columns赋值。
+				</p>
+				<p>
+					table有一个特殊的columns，叫做primary key,它是一个用于区别其他row的标识。table也可以拥有foreign keys columns,所谓的外键引用了same table 或者 other table的某一row的主键值。这种外键与主键的链接叫做关系，是关系型数据库的基础。
+					<img src="../images/chapter5/sql-db-example.png">
+				</p>
+				<p>
+					在上述图片中，user table中的role_id称作外键。链接roles.id和users.role_id的线表示两张表之间的关系。在直线两端的数字表示关系的对应基数。在roles.id这端，表示该关系下只能存在一个roles.id,在uers.role_id这端表示可以存在多个role_id实体。也就是所谓的一对多关系，表明在roles table中的每一天记录可以与users表中的多行记录关联。
+				</p>
+				<p>
+					关系数据库存储数据高效，并能避免数据重复。这里在数据库里修改user role是很简单的，因为角色名字只存在唯一的地方: roles表。一旦roles表中的角色名改变，所有先前引用当前被修改的role name 的用户会看到更新后的角色名。
+				</p>
+				<p>
+					从另一方面说，将数据分割，分别存储在多个tables中，这增加复杂性。生成一个带有角色名的用户列表会存在一点问题，因为用户数据和角色数据需要分别从两张table中读取，然后将这些数据组合后才能一起显示。关系型数据库提供了对tables的join操作。
+				</p>
+			</section> <!-- END of sql databases.-->
+				
+			<section id="NOSQLDatabase">
+				<h2>NoSQL Database</h2>
+				
+				<p>
+					一切不遵循关系模型的数据库一律统一称作NoSQL Database.一种通用的NoSQL database 组织是，使用collections代替tables, documents 代替records.NoSQL database本身设计使得join操作很难实现，因此大多数的它们根本不支持join操作。对于之前的关系型数据库组织的图表可知，其需要应用程序自己去执行join操作，流程是从每一个用户中读取role_id字段的值，然后利用这个值在roles表中搜索相应的角色名。
+				</p>
+				<p>
+					一个更加合适的NoSQL database设计如下:<br>
+					<img src="../images/chapter5/nosql-design.png">
+					这是执行denormalization操作的结果，这种操作以昂贵的数据重复为代价来节省table的数量。
+				</p>
+				<p>
+					这种结构的数据库将角色名显示地存储在每一个用户里。因此，修改角色名将需要修改大量的用户中的角色。
+				</p>
+				<p>
+					但这并不糟糕，因为重复数据使得查询更快。这直接列出用户和角色，而不需要额外的join操作。
+				</p>
+			</section> <!-- END of NOSQLDatabase -->
+				
+			<section id="sqlOrNosql">
+				<h2>Sql or NoSQL?</h2>
+				<p>关系型数据库以高效且紧密的方式存储结构化数据，在这方面它更加出色。关系型数据库极力维持数据一致性，即使面对重大错误以及硬件故障。之所以关系型数据库有如此高的可靠性，是因为它遵循ACID原则: Atomicity(原子性)，Consistency(一致性)，Isolation(隔离性)， Durability(持久性)。nosql 放松了部分ACID原则，因此有时候将获取更高效的性能。
+				</p>
+				<p>
+					对于中小型应用程序，两种数据库都适合，且拥有相同的性能。
+				</p>
+			</section> <!-- END of sqlOrNosql -->
+				
+			<section id="pythonDatabaseFrameworks">
+				<h2>Python Database Fraworks</h2>
+				<p>
+					python包含支持各种开源或商用数据库引擎的库，而flask不限制使用何种数据库引擎库，因此你可以选择任何你喜欢的数据库引擎库。
+				</p>
+				<p>
+					如果数据库引擎库不能满足你的要求，你也可以使用数据库抽象层库，比如SQLAlchemy或者MongoDB, 等等，这些数据库抽象层允许你在一个更高的层次使用python对象工作，而不是使用数据库尸体，比如table, documents, 或者查询语言。
+				</p>
+				<p>
+					
+				<section id="chooseDatabaseFraworks">
+					<h2>How to choose database fraworks</h2>
+					<p>
+						选择数据库框架可以参看如下原则:
+					</p>
+					<p>
+						<h3>Ease of use</h3>
+						比较数据库引擎库和数据库抽象层库，后者更加合适。abstraction layers也叫做对象关系映射表(object-relational mappers)或者对象文档映射表(object-document mappers),它提供了一个透明的转化，这种转化将高层面向对象操作转换成底层的数据库命令。
+					</p>
+					<p>
+													<h3>Performance</h3>
+													由ORMs或者ODMs做出的将对象领域转换成数据库领域的这种转换有一个性能消耗。大多数情况下，这种性能损失可以忽略不计，但也只是对于大多数情况。通常由ORMs或者ODMs让产品获得的利润要远比损耗的些许性能更重要。因此，完全的弃用ORMs或者ODMs是不明智的。有意义的是使用这样一种数据库抽象层，在需要执行一些需要优化的特定操作时，可以可选的通过直接编写原始的数据库命令来达到优化操作的目的。
+						
+					</p>
+					<p>
+						<h3>Portability</h3>
+						必须考虑在软件测试版本与发布版本上使用的数据库的兼容性，以及ORMs或者ODMs在可以使用的底层数据库引擎数量和一致的使用面向对象接口来访问数据库。
+					</p>
+					
+					<p>
+						<h3>Flask integration</h3>
+						尽管选择一个flask集成的数据库框架并不是必须的，但是flask数据库框架可以简化数据库配置和操作。出于这个目的，本章将使用flask-SQLAlchemy集成，它是SQLAlchemy框架的简单包装。     
+					</p>
+				</section><!-- END of how to choose database fraworks -->
+			</section> <!-- END of python database fraworks -->
+				
+			<section id="DatabaseManagementWithFlask-SQLAlchemy">
+				<h2>Database Management with Flask-SQLAlchemy</h2>
+				<p>
+					Flask-SQLAlchemy是flask扩展，它简化了SQLAlchemy在程序中的使用。SQLAlchemy是一个强大的关系数据库框架，它提供了对多个类型的后端数据库的支持，，以及高层的ORMs和对数据库使用查询语言的底层访问。
+				</p>
+				<p>
+					在Flask-SQLAlchemy中，一个数据库由URL指定。以下是三种最流行数据库引擎的URL格式:<br>
+					<img src="../images/chapter5/database_url.png">
+				</p>
+				<p>
+					上述的url中，hostname可以是localhost或者远程服务器的ip地址, database表明要使用的数据库的名字。对于sqlite来说，其无需服务器，因此server,hostname, 以及password可以省略，database是在磁盘中数据库的名字。
+				</p>
+				<p>
+					程序的数据库的url必须定义在app.config对象里作为键SQLALCHEMY_DATABASE_URI的值，其次最好将SQLALCHEMY_TRACK_MODIFICATIONS的值设置为False,这可以有效减少内存的使用，除非你有跟踪对象改变的需要。以下是初始化和配置SQLite数据库的代码:<br>
+					<pre class="code">
+# SQLite database configuration
+
+import os
+from flask_sqlalchemy import SQLAlchemy
+
+basedir = os.path.abspath(os.path.dirname(__file__))
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.paht.join(basedir, 'data.sqlite')
+app.config['SQLAlCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+					</pre>
+					db对象代表数据库，它提供了对所有flask_sqlalchemy功能的访问接口。
+				</p>
+			<section><!--END of database management with flask-sqlalchemy-->
+		</div>
+
+		<div id="extend">
+		
+		</div>
+	</body>
+</html>
+
