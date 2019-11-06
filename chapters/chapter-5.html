@@ -132,7 +132,244 @@ db = SQLAlchemy(app)
 					</pre>
 					db对象代表数据库，它提供了对所有flask_sqlalchemy功能的访问接口。
 				</p>
-			<section><!--END of database management with flask-sqlalchemy-->
+			</section><!--END of database management with flask-sqlalchemy-->
+			
+			<section id="modelDefinition">
+				<h2>Model Definition</h2>
+				<p>
+					程序使用术语model来引用持久化的数据库实体。在ORMs环境下，model表示一个python 类，该类的属性与相应的数据库表的字段相匹配。
+				</p>
+				<p>
+					db对象提供了用于定义model的基本类，以及一系列helper类和函数来定义model的结构。以下是定义model的代码:<br>
+					<pre class="code">
+#hello.py Role and User model definition
+
+class Role(db.Model):
+	__tablename__ = "roles"
+	id = db.Column(db.Integer, primary_key=True)
+	name = db.Column(db.String(64), unique=True)
+	
+	def __repr__(self):
+		return '&lt;Role %r&gt;' % self.name
+		
+class User(db.Model):
+	__tablename__ = "users"
+	id = db.Column(db.Integer, primary_key=True)
+	username = db.Column(db.String(64), unique=True, index=True)
+	
+	def __repr__(self):
+		return '&lt;User %r&gt;' % self.username
+					</pre>
+				</p>
+				<p>
+					__tablename__变量定义了数据库中表的名字。以下列出了可用的columns类型:<br>
+					<img src="../images/chapter5/column_types.png">
+				</p>
+				<p>
+					以下是可用的Column类配置参数:<br>
+					<img src="../images/chapter5/column-configuration.png">
+					flask_sqlalchemy要求所有的model必须包含一个primary_key类型的column.
+				</p>
+			</section><!-- END of Model Definition-->
+				
+			<section id="relationships">
+				<h2>Relationships</h2>
+				<p>
+					关系型数据库通过使用关系来声明不同表的行之间的关联。之前关于Role和User表的关系图表表达了它们之间简单的关系。这是roles到users的一对多关系，因为一个角色可以属于多个用户，但是每一个用户只能拥有一个角色。
+				</p>
+				<p>
+					以下代码表示了model类之间的一对多关系:<br>
+					<pre class="code">
+#hello.py relationships in the database models
+
+class Role(db.Model):
+	#...
+	users = db.relationship('User', backref='role')
+	
+class User(db.Model):
+	#..
+	role_id = db.Column(db.Integer, db.ForeignKey('roles.id')
+					</pre>
+				</p>
+				<p>
+					通过之前users表和roles表之间的关系图表可知,一个关系是通过使用外键来连接不同表中的row(记录)的。User模型中的role_id字段被定义为外键，这个外键建立了不同表之间的关系。db.ForeignKey()中的roles.id参数指定刚添加到User表中的字段role_id的值来源与roles表中的主键id的值。
+				</p>
+				<p>
+					被添加到Role表中的users字段代表从面向对象角度上观察的关系的表示，就好像从一对多关系中的‘一’上观察。在给出一个Role类实例的前提下，其users属性将会返回一个包含用户的列表，这些个用户与该role对象相关联(这些用户代表一对多关系中的'多').db.relationship()中的第一个参数代表处于关系的另一端的模型是什么(该模型默认是表示'多’的一端)。该参数可以是该模型类的字符串名字，前提是该模型是在python模块中定义的，而不管两个模型定义的前后关系。也就是说db.relationship()函数在外键定义的关系前提下，默认定义了一种一对多的关系。
+				</p>
+				<p>
+					db.relationship()中的backref参数定义关系的反转方向，其通过向User模型添加一个role属性来实现。这个属性可以以对象的方式，用在任何User实例上去访问Role模型实例，来取代role_id外键来访问。
+				</p>
+				<p>
+					上述说明声明的一对多关系两个方向的应用: Role的users属性和User的role属性，其都是建立在User定义的role_id外键所建立的关系的前提上。
+				</p>
+				<p>
+					大多数情况下，db.relationship()可以自动定位其所需要的关系的外键，但是有时候它不能决定使用什么字段作为外键。比如如果User模型有两个或更多的字段被定义为指向Role的外键，那么sqlalchemy就不能决定去使用哪一个外键。无论何时配置的外键有冲突，那么db.relationship()必须给出额外的参数来解决这种冲突。以下列出了一些可以用来定义关系的通用配置选项:<br>
+					<img src="../images/chapter5/relationship-options.png">
+				</p>
+				<p>
+					
+				</p>除了默认的一对多关系以外，还存在其他的关系。一对一关系的定义和一对多关系的定义差不多，只不过在db.relationship()中添加值为False的uselist参数，这样由db.relationship()默认定义的多端，变成了单端。多对一关系的定义除了可以将之前一对多关系中的模型反转一下以外，还可以通过将外键和db.relationship()定义在之前一对多关系中的多端(也就是说在一对多关系中，db.relationship()定义在一端，外键定义在多端，而多对一关系中，db.relationship()和外键都定义在多端)。而最复杂的关系: 多对多关系，需要用到额外的表，叫做association table 或者junction table.
+			</section><!-- END of relationships -->
+				
+			<section id="databaseOperations">
+				<h2>Database Operations</h2>
+				<p>
+					最好的方式来使用这些模型实在python shell里。首先配置FLASK_APP环境变量，然后运行flask shell进入flask相关的python shell.
+				</p>
+				
+				<section id="createTables">
+					<h3>Creating the Tables</h3>
+					<p>
+						首先需要使用模型类来创建数据库。db.create_all()函数定位所有继承于db.Model类的子类，然后在数据库中创建相应的表。<br>
+						<pre class="code">
+(venv) $ flask shell
+>>> from hello import db
+>>> db.create_all()
+						</pre>
+					</p>
+					<p>
+						db.create_all()函数在表已经存在于数据库的前提下，其不会重复创建或更新这些数据库表。当需要应用被修改的model时，很不方便。唯一的方法是删除原先的数据库，在重新创建数据库，毫无疑问，数据丢失了。
+						<pre class="code">
+>>> db.drop_all()
+>>> db.create_all()
+						</pre>
+					</p>
+				</section> <!-- END of create the tables-->
+					
+				<section id="insertRows">
+					<h3>Insert Rows</h3>
+					<p>
+						创建模型实例<br>
+						<pre class="code">
+>> from hello import Role, User
+>>> admin_role = Role(name='Admin')
+>>> mod_role = Role(name='Moderator')
+>>> user_role = Role(name='User')
+
+>>> user_john = User(username='john', role=admin_role)   #这里的role由backref参数创建的反向引用，其引用的是模型实例，这里要特别注意。
+>>> user_susan = User(username='susan', role=user_role)
+>>> user_david = User(username='david', role=user_role)
+						</pre>
+						上述对象只存在与shell环境下，因此其主键还没有被数据库自动赋值。
+					</p>
+					<p>
+						加入事务:<br>
+						<pre class="code">
+>>> db.session.add(admin_role)
+>>> db.session.add(mod_role)
+>>> db.session.add(user_role)
+>>> db.session.add(user_john)
+>>> db.session.add(user_susan)
+>>> db.session.add(user_david)
+						</pre>
+						或使用更简洁的方式:<br>
+						<pre class="code">
+>>> db.session.add_all([admin_role, mod_role, user_role, user_john, user_susan, user_david])
+						</pre>
+					</p>
+					<p>
+						事务提交: 将改变写入数据库:<br>
+						<pre class="code">
+>>> db.session.commit()
+						</pre>
+					</p>
+					<p>
+						事务使得数据库数据保持一致性。事务中的对象会被自动写入数据库。当在事务提交期间出现任何错误，则整个事务会被丢弃，这不会因为只更新部分改变而导致数据库数据不完整。
+					</p>
+					<p>
+						事务支持回滚操作。
+					</p>
+				</section> <!-- END of insert rows -->
+					
+				<section id="modifyRow">
+					<h3>Modify Rows</h3>
+					<p>
+						<pre class="code">
+>>> admin_role.name = "Administrator"
+>>> db.session.add(admin_role)
+>>> db.session.commit()
+						</pre>
+					</p>
+				</section> <!-- END of modify row -->
+					
+				<section id="deletingRows">
+					<h3>Deleting Rows</h3>
+					<p>
+						<pre class="code">
+>>> db.session.delete(mod_role)  #注意，他这里不是db.delete(), 而是db.session.delete()
+>>> db.session.commit()
+						</pre>
+					</p>
+				</section><!-- END of deleting rows -->
+					
+				<section id="queryingRows">
+					<h3>Querying Rows</h3>
+					<p>
+						每一个model类中都包含一个用于查询的query对象。
+						<pre class="code">
+>>> Role.query.all()
+[&lt;Role 'Administrator'&gt;, &lt;Role 'User'&gt;]
+>>> User.query.all()
+[&lt;User 'john'&gt;, &lt;User 'susan'&gt;, &lt;User 'david' &gt;]
+						</pre>
+						结果过滤<br>
+						<pre class="code">
+>>> User.query.filter_by(role=user_role).all()
+[&lt;User 'susan'&gt;, &lt;User 'david'&gt;]
+						</pre>
+					</p>
+					<p>
+						检查query对象的底层 sql语言实现
+						<pre class="code">
+>>> str(User.query.filter_by(role=user_role))
+'SELECT users.id AS user_id, users.username AS users_name, users.role_id AS users_role_id \nFROM users \nWHERE :param_1 = users.role_id' 
+						</pre>
+					</p>
+					<p>
+						如果退出shell,那么之前创建的所有对象将不会再以python 对象的形式存在，而是以rows(记录)的形式继续存在于相应的数据库中。当你创建一个新的shell时，你必须从数据库中的row中重新创建相应的模型实例。<br>
+						<pre class="code">
+user_role = Role.query.filter_by(name='User').first()  #这里是从数据库中导出相应数据对象，而一开始时，是从头开始自己创建空的类实例。
+#而且查询结果返回的是对象，而不是像sql查询语言那样单纯返回字段。
+						</pre>
+					</p>
+					<p>
+						filter_by()过滤器可以以方法链的形式在query对象上多次调用，直到得到满意的结果。以下是常用的过滤器:<br>
+						<img src="../images/chapter5/filters.png">
+					</p>
+					<p>
+						当所有所需的过滤器应用到query对象中后，执行all()会使得query运行，返回结果为一个列表，除了all()还有其他方法可以触发query的运行。以下是query执行方法:<br>
+						<img src="../images/chapter5/query-executors.png">
+					</p>
+					<p>
+						关系的工作原理类似于查询，以下代码查询在roles和users之间双向的一对多关系:<br>
+						<pre class="code">
+>>> users = user_role.users
+>>> users
+[&lt;User 'susan'&gt;, &lt;User 'david'&gt;]
+>>> users[0].role
+&lt;Role 'User'&gt;
+						</pre>
+					</p>
+					<p>
+						user_role.users查询有点小问题存在。当user_role.users表达式被求值时，一个隐式的查询在内部调用all()方法，结果是返回一个包含用户的列表。因为query对象被隐藏，所以不可能使用方法链的形式对结果进行进一步使用多个过滤器精炼。举个例子，比如说想返回一个依据字母顺序来排序的用户列表。以下代码重新配置关系，使得查询不会被自动执行。<br>
+						<pre class="code">
+class Role(db.Model):
+	#...
+	users = db.relationship('User', backref='role', lazy='dynamic')
+						</pre>
+					</p>
+					<p>
+						以这种方式配置的关系，user_role.users返回的query对象还没有被执行，因此可以使用它通过过滤器方法链对其进一步精炼。<br>
+						<pre class="code">
+>>> user_role.users.order_by(User.username).all() #依据字母顺序对查询结果进行排序
+[&lt;User 'david'&gt;,&lt;User 'susan'&gt;]
+>>> user_role.users.count()
+2
+						</pre>
+					</p>
+				</section><!-- END of querying rows -->
+			</section><!-- END of database operations -->
 		</div>
 
 		<div id="extend">
