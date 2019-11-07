@@ -370,6 +370,188 @@ class Role(db.Model):
 					</p>
 				</section><!-- END of querying rows -->
 			</section><!-- END of database operations -->
+				
+			<section id="databaseUseInViewFunction">
+				<h2>Database Use In View Functions</h2>
+				<p>
+					以下是将用户提交的用户名存入数据库的代码:<br>
+					<pre class="code">
+#hello.py database use in view function
+
+@app.route('/', methods=['POST', 'GET']
+def index():
+	form = NameForm()
+	if form.validate_on_submit():
+		user = User.query.filter_by(username=form.name.data).first()
+		if user is None:
+			user = User(username=form.name.data)
+			db.session.add(user)
+			db.session.commit()
+			session['known'] = False
+		else:
+			session['known'] = True
+			
+		session['name'] = form.name.data
+		form.name.data = ''
+		return redirect(url_for('index'))
+	return render_template('index.html', form=form, name=session.get('name'), known=session.get('known', False))
+					</pre>
+				</p>
+				<p>
+					模版代码:<br>
+					<pre class="code">
+#templates/index.html customized greeting in template
+
+{% extends 'base.html' %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% block title %} Flasky {% endblock %}
+
+{% block page_content %}
+&lt;div class="page_header"&gt;
+	&lt;h1&gt;Hello, {% if name %} {{ name }} {% else %}Stranger{% endif %}!&lt;/h1&gt;
+	
+	{% if not known %}
+	&lt;p&gt;Pleased to meet you!&lt;/p&gt;
+	{% else %}
+	&lt;p&gt;Happy to see you again!&lt;/p&gt;
+	{% endif %}
+&lt;/div&gt;
+
+{{ wtf.quick_form(form) }}
+{% endblock %}
+					</pre>
+				</p>
+			</section><!-- END of database use in view function-->
+				
+			<section id="integrationWithThePythonShell">
+				<h2>Integration with the Python Shell</h2>
+				<p>
+					每次新建一个shell session都必须导入数据库实例以及模型，这是非常乏味的工作。为了避免总是重复这种任务，flask shell命令可以被配置去自动化导入这些对象。
+				</p>
+				<p>
+					为了将对象添加到导入列表，一个shell context processor必须被创建以及使用app.shell_context_processor装饰器注册。
+					<pre class="code">
+#hello.py adding a shell context
+
+@app.shell_context_processor
+def make_shell_context():
+	return dict(db=db, User=User, Role=Role)
+					</pre>
+				</p>
+				<p>
+					使用:<br>
+					<pre class="code">
+$flask shell
+>>> app
+&lt;Flask 'hello'&gt;
+>>> db
+&lt;SQLAlchemy engine='sqlite:////home/flask/flasky/data.sqlite'&gt;
+>>> User
+&lt;class 'hello.User'&gt;
+					</pre>
+				</p>
+			</section><!-- END of the integration with python shell-->
+			
+			<section id="databasMigrationsWithFlaskMigrate">
+				<h2>Database Migrations with Flask-Migrate</h2>
+				<p>
+					当你持续开发一个应用程序，你会发现你的数据库模型需要改变，并且随后你也必须更新数据库。flask-sqlalchemy只在数据库里没有数据库表的情况下，才会创建数据库表，所以唯一更新数据库的方法是摧毁原先的数据库，然后重新创建数据库，当然后果是原先所有的数据也一并被摧毁。
+				</p>
+				<p>
+					更好的方式是使用数据库迁移框架。数据库迁移框架原理类似源码版本控制系统，它跟踪数据库类型的变化，允许数据库类型渐进式的改变。
+				</p>
+				<p>
+					flask使用flask_migrate框架，其封装了Alembic框架，将其集成到了flask 命令中。
+				</p>
+				<section id="creatingAMigrationReposity">
+					<h3>Creating a Migration Repository</h3>
+					<p>
+						flask_migrate初始化:<br>
+						<pre class="code">
+from flask_migrate import Migrate
+
+#..
+
+migrate = Migrate(app, db)
+						</pre>
+					</p>
+					<p>
+						为了暴露数据库迁移命令，flask_migrate添加一个带有多个子命令的flask db命令。当你新建一个项目时，可以使用flask db init命令来添加对数据库迁移功能。<br>
+						<img src="../images/chapter5/flask-db-init.png">
+					</p>
+					<p>
+						flask db init命令创建了一个megrations子文件夹，所有的迁移脚本都保存在这个文件夹下。
+					</p>
+				</section><!-- END of creating a migration repository -->
+					
+				<section id="creatingAMigrationScript">
+					<h3>Creating a Migration Script<h3>
+						
+					<p>
+						在Alembic框架里，一个数据库迁移用migration script表示。该脚本有两个函数，分别是: upgrade()和downgrade()。upgrade()应用所有在数据库迁移中的数据库类型改变，而downgrade()移除这些改变。这和git工具的工作原理类似。这种添加和移除数据库类型改变的能力，意味着Alembic可以将数据库回滚到数据库类型改变历史上的任何一个状态。
+					</p>
+					<p>
+						Alembic迁移可以使用手动方式创建，或者使用revision和migrate命令来自动化创建。一个手动创建的迁移创建了一个迁移骨架脚本，该脚本中的upgrade()和downgrage()函数为空实现，其留待开发者使用Alebic的Operations对象暴露出的命令来实现这两个空函数。而一个自动产生的迁移脚本，试图查找模型定义和当前数据库的状态之间的差异来为upgrade()和downgrade()函数产生代码。
+					</p>
+					<p>
+						注意: 自动生成的迁移脚本并不总是精确的，会丢失一些容易混淆的细节。比如，如果一个列被重命名，那么自动生成的迁移会认为原先的列被删除，而一个新名字的列被添加。如果原样使用该迁移脚本，那么会造成该列的数据丢失。因此，最好总是审查自动生成的迁移脚本，修改有误的描述。
+					</p>
+					
+					<p>
+						以下是修改数据库类型的步骤:<br>
+						<ul>
+							<li>修改模型类</li>
+							<li>使用flask db migrate命令创建自动生成的迁移脚本
+							<li>审查该脚本，并做出适当修改</li>
+							<li>将迁移脚本添加到版本控制系统</li>
+							<li>使用flask db upgrade命令将迁移应用到数据库上
+						</ul>
+						<img src="../images/chapter5/flask-db-migrate.png">
+					</p>
+				</section><!-- END of creating a migration script -->
+					
+				<section id="upgradingDatabase">
+					<h3>Upgrading the Database</h3>
+					<p>
+						<pre class="code">
+(venv) $ flask db upgrade
+INFO [alembic.migration] Context impl SQLiteImpl.
+INFO [alembic.migration] Will assume non-transactonal DDL
+INFO [alembic.migration] Running upgrade None -> 1bc59146bb5, initial migration
+						</pre>
+					</p>
+					<p>
+						首次使用迁移，效果等同于调用db.create_all(),然而随后的迁移将数据库类型改变部署到表中，而不影响数据库中的数据。
+					</p>
+					<p>
+						如果你的项目的数据库并不是用flask db init命令创建的，而是用db.create_all()创建的，那么执行flask db upgrade会失败，原因是重复创建已存在的数据库表。解决方法一是，删除原有的数据库文件后，再使用flask db upgrade命令。方法二是，跳过flask db upgrade命令，然后使用flask db stamp 命令标记现有的数据库为已更新。
+					</p>
+				</section><!-- END of upgrading the database-->
+					
+				<section id="addingMoreMigrations">
+					<h2>Adding more Migrations</h2>
+					
+					<p>
+						当你持续开发你的项目时，你会发现你需要频繁改变数据库模型。当你使用迁移框架来管理数据库时，所有的改变必须被定义在迁移脚本里，因为任何不被迁移跟踪的改变不具有回滚性。引入数据库中的改变的流程类似于首次迁移所做的流程:<br>
+						<ul>
+							<li>改变数据库模型</li>
+							<li>使用flask db migrate命令产生迁移脚本</li>
+							<li>审查和纠正迁移脚本</li>
+							<li>使用flask db upgrade命令实施数据库改变
+						</ul>
+					</p>
+					<p>
+						当你工作在将来的某个阶段，你会发现你需要多次修改数据库模型，以达到令你满意的结果。如果最后一次迁移没有提交到版本控制系统，那么你可以将最后一次迁移所做的改变加入到下一次的迁移脚本里去。这使得你无需大量的小型且单个自身并无意义的迁移脚本。将最后一次的迁移加入下一次迁移的流程如下:<br>
+						<ul>
+							<li>使用flask db downgrade命令将最后一次迁移从数据库中移除(这会丢失一些数据)</li>
+							<li>删除最后一次迁移脚本，其现在已经无用。</li>
+							<li>使用flask db migrate命令产生新的数据库迁移，这包含前一次移除的迁移中的改变和当下你对数据库所做的改变。</li>
+							<li>检查和纠正迁移脚本</li>
+						</ul>
+					</p>
+				</section><!-- END of adding more migrations -->
+			</section><!-- END of database migrations with flask-migration -->
 		</div>
 
 		<div id="extend">
