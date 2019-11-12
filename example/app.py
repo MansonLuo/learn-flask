@@ -1,4 +1,4 @@
-from flask import Flask, render_template, flash, url_for, redirect, session
+from flask import Flask, render_template, flash, url_for, redirect, session, request
 from flask_bootstrap import Bootstrap
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField
@@ -7,7 +7,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 import os
 
-basedir = os.path.abspath(os.path.dirname(__name__))
+basedir = os.path.abspath(os.path.dirname(__file__))
 
 class LogOnForm(FlaskForm):
     name = StringField('User name', validators=[DataRequired()])
@@ -32,16 +32,20 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), unique=True, index=True)
     password = db.Column(db.String(64))
+    email = db.Column(db.String(64), unique=True)
 
     def __repr__(self):
         return '<User %r>' % self.name
 
+@app.shell_context_processor
+def create_context():
+    return dict(db=db, User=User)
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
     form = LogOnForm()
-
     if form.validate_on_submit():
+        flash('in function')
         #check if this user has registered
         user = User.query.filter_by(name=form.name.data).first()
         if user:
@@ -49,23 +53,40 @@ def index():
             session['user'] = user.name
             if form.password.data == user.password:
                 flash('log on success')
-                return render_template('user-home.html')
+                return redirect(url_for('home'))
             else:
                 flash('password error')
                 return redirect(url_for('index'))
         else:
             flash('please register')
-            return render_template('log-in.html')
+            return redirect(url_for('login'))
     return render_template('index.html', form=form)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    logon_form = LogOnForm()
     login_form = LogInForm()
 
     if login_form.validate_on_submit():
-        pass
-    return render_template('index.html', form=logon_form)
+        name = login_form.name.data
+        password = login_form.password.data
+        email = login_form.email.data
+
+        if User.query.filter_by(name=name).first():
+            flash('User name has already in use, choose for another user name.')
+            return redirect(url_for('login'))
+        else:
+            newUser = User(name=name, password=password, email=email)
+            db.session.add(newUser)
+            db.session.commit()
+
+            flash('You now have a new account')
+            return redirect(url_for('index'))
+
+    return render_template('log-in.html', form=login_form)
+
+@app.route('/home')
+def home():
+    return render_template('user-home.html', user=session.get('user'))
 
 if "__main__" == __name__:
     app.run(debug=True)
