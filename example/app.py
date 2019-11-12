@@ -5,6 +5,8 @@ from wtforms import StringField, SubmitField
 from wtforms.validators import DataRequired
 from flask_sqlalchemy import SQLAlchemy
 
+from flask_mail import Mail, Message
+
 import os
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -24,9 +26,16 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'hard to guess string'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'data.sqlite')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['MAIL_SERVER'] = 'smtp.qq.com'
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_USE_SSL'] = True
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
 
 bootstrap = Bootstrap(app)
 db = SQLAlchemy(app)
+mail = Mail(app)
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -36,6 +45,12 @@ class User(db.Model):
 
     def __repr__(self):
         return '<User %r>' % self.name
+
+def send_email(to, subject, template, **kwargs):
+    msg = Message(subject, sender=app.config['MAIL_USERNAME'], recipients=[to])
+    msg.body = render_template(template + '.txt', **kwargs)
+    msg.html = render_template(template + '.html', **kwargs)
+    mail.send(msg)
 
 @app.shell_context_processor
 def create_context():
@@ -79,7 +94,8 @@ def login():
             db.session.add(newUser)
             db.session.commit()
 
-            flash('You now have a new account')
+            flash('You now have a new account, please verify your email as soom as you can.')
+            send_email(email, 'New User Regiter!', 'email', name=name)
             return redirect(url_for('index'))
 
     return render_template('log-in.html', form=login_form)

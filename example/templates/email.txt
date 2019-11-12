@@ -1,0 +1,2 @@
+<h1>New User Register</h1>
+<p>Hi manson, There is a new user becoming our member of this big family right now, take care of it.</p>
