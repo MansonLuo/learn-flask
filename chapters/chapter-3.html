@@ -388,7 +388,7 @@ moment = Moment(app)
 .
 .
 
-{% block scripts %}
+{% block scripts %}   #注意这里的bootstrap定义的是scripts， 而不是script，特别要注意，不然很难找到时间渲染无效的原因
 	{{ super() }}
 	
 	{{ moment.include_moment() }}  #moment对象是flask在jinja中预定义的对象，之所以有这个手动添加moment.js的方法，我猜是不禁止用户使用script标签来手动加载moment.js

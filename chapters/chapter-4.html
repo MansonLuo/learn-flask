@@ -91,7 +91,7 @@ class NameForm(FlaskForm):
 				<p>
 					上述方式还是有点麻烦，flask_bootstrap提供了一种快速渲染flask_wtf 表单的方式。上诉表格可使用如下代码渲染:<br>
 					<pre class="code">
-{% import "bootstrap/wtf.html" as wtf %}
+{% import "bootstrap/wtf.html" as wtf %}    #在这里用单引号包围bootstrap/wtf.html，这种形式无效，务必留心
 {{ wtf.quick_form(form) }}
 					</pre>
 					<br>
