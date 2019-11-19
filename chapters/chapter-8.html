@@ -1,0 +1,67 @@
+<DOCTYPE html>
+<html>
+	<head>
+		<title>User Authentication</title>
+		<meta charset="utf-8">
+		<link rel="styleshet" href="../style.css">
+	</head>
+
+	<body>
+		<div id="content">
+			<h1>User Authentication</h1>
+			
+			<section id="overview">
+				<h2>Overview</h2>
+				<p>
+					大多数应用需要知道它们的用户是谁。当用户连接应用时，他们被应用验证，该过程使得应用知道用户的身份。一旦应用知道它们的用户是谁，它可以给相应用户个性化服务。
+				</p>
+				<p>
+					大多数的验证方法要求用户提供一段验证信息，该信息要么是邮件地址或者是用户名，以及一个密码。本章，将完成一个验证系统。
+				</p>
+			</section> <!-- END of overview -->
+				
+				
+			<section id="authenticationExtensionForFlask">
+				<h2>Authentication Extensions for Flask</h2>
+				<p>
+					有很多优秀的python验证库，但是没有一个可以完成所有的任务。本章使用的验证方案使用多个库，并为它们能协作工作提供了粘结代码。以下是使用到的库: <br>
+					<ul>
+						<li>
+							Flask-Login: 管理已经登陆的用户的会话(session)信息。
+						</li>
+						<li>
+							Werkzeug: 密码hashing和验证。
+						</li>
+						<li>
+							itsdangerous: 以密码的方式保护验证令牌的产生和验证。
+						</li>
+					</ul>
+				</p>
+				<p>
+					除了验证相关的库以外，也使用通常的扩展: <br>
+					<ul>
+						<li>Flask-Mail: 发送加密过的邮件。</li>
+						<li>
+							Flask-Bootstrap: html 模版。
+						</li>
+						<li>
+							Flask-WTF: 网页表单。
+						</li>
+					</ul>
+				</p>
+			</section> <!-- END of authentication extensions for flask -->
+				
+			<section id="passwordSecurity">
+				<h2>Password Security</h2>
+				<p>
+					在网站设计中，存储在数据库中的用户信息的安全经常被开发者忽视。如果攻击者攻破了你的服务器并且可以访问你的用户数据库，那么你的用户将暴露在危险中--这种危险比你认为的还要严重。
+				</p>
+			</section> <!-- END of password security -->
+		</div>
+
+		<div id="extend">
+
+		</div>
+	</body>
+
+</html>
