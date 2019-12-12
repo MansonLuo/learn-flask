@@ -351,6 +351,20 @@ class LoginForm(FlaskForm):
 					<p>
 						在base.html中的导航条使用jinja2条件来显示Log in 或者Log Out链接，其取决于当前用户的登陆状态。以下是模板条件代码：<br>
 
+						<pre class="code">
+# app/templates/base.html: Log In and Log Out navigation bar links
+
+&lt;ul class="nav navbar-nav navbar-right"&gt;
+	{% if current_user.is_authenticated %}
+		&lt;li&gt; &lt;a href="{{ url_for('auth.logout') }}"&gt;Log Out&lt;/a&gt;&lt;/li&gt;
+	{% else %}
+		&lt;li&gt; &lt;a href="{{ url_for('auth.login') }}"&gt;Log In&lt;/a&gt;&lt;/li&gt;
+	{% endif %}
+&lt;/ul&gt;
+						</pre>
+					</p>
+					<p>
+						在条件中使用的current_user变量由flask_login定义，并且自动对视图函数和模板有效。该变量包含了当前登陆的用户或者一个代理的匿名用户，如果该用户没有登陆的话。一个匿名对象的is_authenticated属性值为False,因此表达式current_user.is_authenticated是一个方便的方法去检测当前用户有没有登陆。
 					</p>
 				</section> <!-- END of Adding a Logging Form -->
 			</section> <!-- END of User Authentication with flask-login -->
