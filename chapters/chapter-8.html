@@ -295,6 +295,64 @@ def load_user(user_id):
 						flask_login使用login_manager.user_loader装饰器来注册函数，该函数会在flask_login需要获取特定以登陆用户的信息时被调用。用户标示符以字符串的形式被传递给函数，因此在函数将它传递给加载用户数据的sqlalchemy query时，其会被转换成integer.该函数的返回值必须是一个用户对象，或者为None，如果用户标示符无效或者发生其他错误。
 					</p>
 				</section> <!-- END of sub topic Preparing the user model for logins -->
+
+				<section id="ProtectingRoutes">
+					<h3>Protecting Routes</h3>
+					<p>
+						为了保护一个路由，并限定其只能被已通过验证的用户访问，flask_login提供了一个login_required装饰器。以下是其用例:<br>
+						<pre class="code">
+# usage of login_required decoreator
+
+from flask_login import login_required
+
+@app.route('/secret')
+@login_required
+def secret():
+	return 'Only authenticated users are allowed!'
+						</pre>
+					</p>
+
+					<p>
+						从上述例子中，可以看出装饰器可以被链式调用。当两个以上装饰器被添加到一个函数上时，每一个装饰器除了会影响目标函数以外，还会影响其声明位置之下的所有东西。在本例中，secret()函数将会使用login_requierd装饰器来防止未验证用户访问，然后被login_required影响而产生的结果函数将会在flask中注册成一个route。反转装饰器之间的顺序会造成错误的结果，因为原函数在接收由login_required装饰器制定的属性之前，其会被注册成一个路由函数。
+					</p>
+					<p>
+						多亏了login_required装饰器，一旦该受保护路由被未验证用户访问，flask-login将会中断用户请求，转而将匿名用户重定向到登陆页面。
+					</p>
+				</section>  <!-- END of sub topic Protecting Routes -->
+
+				<section id="AddingALoggigForm">
+					<h3>Adding a Logging Form</h3>
+					<p>
+						以下是登陆页面的登陆表格:<br>
+						<pre class="code">
+# app/auth/forms.py : login form
+
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField, BooleanField, SubmitField
+from wtforms.validators import DataRequired, Length, Email
+
+class LoginForm(FlaskForm):
+	email = StringField('Email', validators=[DataRequired(), Length(1, 64), Email()])
+	password = PasswordField('Password', validators=[DataRequired()])
+	remember_me = BooleanField('Keep me logged in')
+	submit = SubmitField('Log In')
+						</pre>
+					</p>
+					<p>
+						Password类代表&lt;input&gt;元素，其类型是type="password". BooleanField代表一个单选框。
+					</p>
+					<p>
+						email字段使用多个验证器来确保用户不仅输入了数据，而且输入的数据有效合法。当提供多个验证器时，flask_wtf将会以验证器提供的顺序来对其求值，一旦某个验证器失败，那么错误信息将来源于首次失败的验证器中的第一个。
+					</p>
+
+					<p>
+						和登陆页面相关联的模板文件存储为tempaltes/auth/login.html，一下是登陆页面的图片：
+					</p>
+					<p>
+						在base.html中的导航条使用jinja2条件来显示Log in 或者Log Out链接，其取决于当前用户的登陆状态。以下是模板条件代码：<br>
+
+					</p>
+				</section> <!-- END of Adding a Logging Form -->
 			</section> <!-- END of User Authentication with flask-login -->
 		</div> <!-- END of content -->
 
