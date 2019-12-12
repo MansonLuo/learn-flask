@@ -3,7 +3,7 @@
 	<head>
 		<title>User Authentication</title>
 		<meta charset="utf-8">
-		<link rel="styleshet" href="../style.css">
+		<link rel="stylesheet" href="../style.css">
 	</head>
 
 	<body>
@@ -23,40 +23,92 @@
 				
 			<section id="authenticationExtensionForFlask">
 				<h2>Authentication Extensions for Flask</h2>
-				<p>
-					有很多优秀的python验证库，但是没有一个可以完成所有的任务。本章使用的验证方案使用多个库，并为它们能协作工作提供了粘结代码。以下是使用到的库: <br>
-					<ul>
-						<li>
-							Flask-Login: 管理已经登陆的用户的会话(session)信息。
-						</li>
-						<li>
-							Werkzeug: 密码hashing和验证。
-						</li>
-						<li>
-							itsdangerous: 以密码的方式保护验证令牌的产生和验证。
-						</li>
-					</ul>
-				</p>
-				<p>
-					除了验证相关的库以外，也使用通常的扩展: <br>
-					<ul>
-						<li>Flask-Mail: 发送加密过的邮件。</li>
-						<li>
-							Flask-Bootstrap: html 模版。
-						</li>
-						<li>
-							Flask-WTF: 网页表单。
-						</li>
-					</ul>
-				</p>
+
+				<section id="preview">
+					<p>
+						有很多优秀的python验证库，但是没有一个可以完成所有的任务。本章使用的验证方案使用多个库，并为它们能协作工作提供了粘结代码。以下是使用到的库: <br>
+						<ul>
+							<li>
+								Flask-Login: 管理已经登陆的用户的会话(session)信息。
+							</li>
+							<li>
+								Werkzeug: 密码hashing和验证。
+							</li>	
+							<li>
+								itsdangerous: 以密码的方式保护验证令牌的产生和验证。
+							</li>
+						</ul>
+					</p>
+					<p>
+						除了验证相关的库以外，也使用通常的扩展: <br>
+						<ul>
+							<li>Flask-Mail: 发送加密过的邮件。</li>
+							<li>
+								Flask-Bootstrap: html 模版。
+							</li>
+							<li>
+								Flask-WTF: 网页表单。
+							</li>
+						</ul>
+					</p>
+				</section><!-- END of sub topic preview -->
+
+				<section id="passwordSecurity">
+					<h2>Password Security</h2>
+					<p>
+						在网站设计中，存储在数据库中的用户信息的安全经常被开发者忽视。如果攻击者攻破了你的服务器并且可以访问你的用户数据库，那么你的用户将暴露在危险中--这种危险比你认为的还要严重。大多数的用户在多个网站使用相同的密码，这是已知的事实，因此即使你没有存储任何敏感的数据，通过访问你数据库上存储的密码，攻击者可以访问你的用户在其他网站上的账户。
+					</p>
+					<p>
+						安全的将用户密码存储在数据库的关键是，不存储密码本身，而是密码的哈希形式。一个密码哈希函数接受一个密码作为输入，向密码添加一个随机组件(salt).然后向它施加多个单向加密转换。该过程的结果是一个新的字符序列，该序列和原密码没有任何相似性，而且现今没有已知的方法将该序列转换成原密码。可以用验证密码哈希来取代验证原密码，这是因为哈希函数具有重复性：给定相同的输入(密码和salt),则结果总是相同的。
+					</p>
+				</section> <!-- END of sub topic password security -->
+
 			</section> <!-- END of authentication extensions for flask -->
-				
-			<section id="passwordSecurity">
-				<h2>Password Security</h2>
+
+			<section id="HashingPasswordsWithWerkzeug">
 				<p>
-					在网站设计中，存储在数据库中的用户信息的安全经常被开发者忽视。如果攻击者攻破了你的服务器并且可以访问你的用户数据库，那么你的用户将暴露在危险中--这种危险比你认为的还要严重。
+					Werkzeug 的security模块实现了安全密码哈希。通过以下两个函数来实现，各自分别用在注册和验证阶段。
+					<ul>
+						<li>
+							<b>generate_password_hash(password, method='pbkd:sha256', salt_length=8)</b><br>
+							<code>method</code>和<code>salt_length</code>适用与绝大多数情况。
+						</li>
+						<li>
+							<b>check_password_hash(hash, password)</b><br>
+							返回值为True or False
+						</li>
+					</ul>
 				</p>
-			</section> <!-- END of password security -->
+				<p>
+					以下是对User模型的改变，以添加密码哈希功能:<br>
+					<pre class="code">
+from werkzeug.security import generate_password_hash, check_password_hash
+
+class User(db.Model):
+	#...
+	password_hash = db.Column(db.String(128))
+
+	@property
+	def password(self):
+		raise AttributeError('password is not a readable attribute')
+	
+	@password.setter
+	def password(self, password):
+		self.password_hash = generate_password_hash(password)
+
+	def verify_password(self, password):
+		return check_password_hash(self.password_hash, password)
+
+					</pre>
+				</p>
+				<p>
+					密码哈希函数通过只读属性password来实现。当这个属性被设置时，setter方法将会调用werkzeug的generate_password_hash()函数， 并且将结果写入password_hash字段里。尝试读取password属性将会返回一个错误，很明显原密码一旦哈希就不能再被二次赋值。
+				</p>
+				<p>
+					check_password_hash()函数返回True意味着被验证的密码是正确的。
+				</p>
+			</section> <!-- END of sub topic Hashing Passwords with Werkzeug -->
+
 		</div>
 
 		<div id="extend">
