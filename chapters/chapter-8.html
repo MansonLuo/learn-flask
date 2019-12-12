@@ -25,6 +25,7 @@
 				<h2>Authentication Extensions for Flask</h2>
 
 				<section id="preview">
+					<h3>Preview</h3>
 					<p>
 						有很多优秀的python验证库，但是没有一个可以完成所有的任务。本章使用的验证方案使用多个库，并为它们能协作工作提供了粘结代码。以下是使用到的库: <br>
 						<ul>
@@ -54,7 +55,7 @@
 				</section><!-- END of sub topic preview -->
 
 				<section id="passwordSecurity">
-					<h2>Password Security</h2>
+					<h3>Password Security</h3>
 					<p>
 						在网站设计中，存储在数据库中的用户信息的安全经常被开发者忽视。如果攻击者攻破了你的服务器并且可以访问你的用户数据库，那么你的用户将暴露在危险中--这种危险比你认为的还要严重。大多数的用户在多个网站使用相同的密码，这是已知的事实，因此即使你没有存储任何敏感的数据，通过访问你数据库上存储的密码，攻击者可以访问你的用户在其他网站上的账户。
 					</p>
@@ -65,7 +66,7 @@
 
 
 				<section id="HashingPasswordsWithWerkzeug">
-					<h2>Hashing Password With WerkZeug</h2>
+					<h3>Hashing Password With WerkZeug</h3>
 
 					<p>
 						Werkzeug 的security模块实现了安全密码哈希。通过以下两个函数来实现，各自分别用在注册和验证阶段。
@@ -229,8 +230,71 @@ def create_app(config_name):
 			<section id="UserAuthenticationWithFlasklogin">
 				<h2>User Authentication with Flask-Login</h2>
 				<p>
-					当用户登陆进应用程序时，他们的验证状态需要被记录到用户回话中，因此当他们在不同页面之间导航时，这些验证信息是共享的。
+					当用户登陆进应用程序时，他们的验证状态需要被记录到用户回话中，因此当他们在不同页面之间导航时，这些验证信息是共享的。Flask_Login是一个小型但是极度有用的扩展库，它专注于管理用户验证系统中的该特定方面，而应用程序不用去使用一个庞大的用户验证机制。
 				</p>
+
+				<section id="PreparingUserModelForLogins">
+					<h3>Preparing the User Model for logins</h3>
+					<p>
+						Flask-Login工作与应用程序自己的User模型紧密相连。为了能和应用程序的User模型一起工作， Flask-Login要求User模型必须实现一些通用的属性和方法。以下是要求元素的图片:<br>
+						<img src='.' alt="this is some items that flask-login require User model to contain">
+					</p>
+					<p>
+						这些属性和方法可以直接在模型类中实现，但是处于方便考虑，flask-login提供了一个UserMixin类，该类包含了上述要求的默认实现，其适用于绝大多数情况。以下是更新后的User模型：<br>
+						<pre class="code">
+# app/models.py: updates to the User model to support user logins
+
+from flask_login import UserMixin
+
+class User(UserMixin, db.Model):
+	__tablename__ = 'users'
+	id = db.Column(db.Integer, primary_key = True)
+	email = db.Column(db.String(64), unique=True, index=True)
+	username = db.Column(db.String(64), unique=True, index=True)
+	password_hash = db.Column(db.String(128))
+	role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
+						</pre>
+					</p>
+					<p>
+						注意此时email字段被添加。在该程序中，用户将以其邮箱地址注册， 因为相比用户名，邮箱地址不容易忘记。
+					</p>
+
+					<p>
+						以下是flask-login在工厂函数中初始化的代码:<br>
+						<pre class="code">
+# app/__init__.py: Flask-Login initialazation
+
+from flask_login import LoginManager
+
+login_manager = LoginManager()
+login_manager.login_view = 'auth.login'
+
+def create_app(config_name):
+	#...
+	login_manager.init_app(app)
+	#...
+
+						</pre>
+					</p>
+					<p>
+						LoginManager对象的login_view属性设置了登陆页面的路由函数名。Flask_login将会将一个试图访问被保护页面的匿名用户重定向到登陆页面。因为该登陆路由是在一个蓝图中定义，所以endpoint名字需要施加特定蓝图名前缀。	
+					</p>
+					<p>
+						最后，flask_login需要应用程序指定一个函数来被调用，当flask_login扩展需要以制定用户标示符来从数据库中加载指定用户时，该函数会被自动调用。以下是自动加载用户数据的函数:<br>
+						<pre class="code">
+# app/models.py: user loader function
+
+from . import login_manager
+
+@login_manager.user_loader
+def load_user(user_id):
+	return User.query.get(int(user_id))
+						</pre>
+					</p>
+					<p>
+						flask_login使用login_manager.user_loader装饰器来注册函数，该函数会在flask_login需要获取特定以登陆用户的信息时被调用。用户标示符以字符串的形式被传递给函数，因此在函数将它传递给加载用户数据的sqlalchemy query时，其会被转换成integer.该函数的返回值必须是一个用户对象，或者为None，如果用户标示符无效或者发生其他错误。
+					</p>
+				</section> <!-- END of sub topic Preparing the user model for logins -->
 			</section> <!-- END of User Authentication with flask-login -->
 		</div> <!-- END of content -->
 
