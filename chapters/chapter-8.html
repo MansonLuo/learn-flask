@@ -129,6 +129,35 @@ False
 'pbk...dff'
 					</pre>
 				</p>
+				<p>
+					注意尝试访问一个用户的password属性将返回AttributeError.并且u和u2即使拥有相同的password值，他们的password_hash也仍旧不一样。可以将上述测试添加到tests文件夹中以支持单元测试。以下是添加的单元测试：<br>
+					<pre class="code">
+# tests/test_user_model.py: password hashing tests
+
+import unittest
+from app.models import User
+
+class UserModelTestCase(unittest.TestCase):
+	def test_password_setter(self):
+		u = User(password = 'cat')
+		self.assertTrue(u.password_hash is not None)
+	
+	def test_no_password_getter(self):
+		u = User(password = 'cat')
+		with self.assertRaises(AttributeError):
+			u.password
+
+	def test_password_verification(self):
+		u = User(password = 'cat')
+		self.assertTrue(u.verify_password('cat'))
+		self.assertFalse(u.verify_password('dog'))
+
+	def test_password_salts_are_random(self):
+		u = User(password = 'cat')
+		u2 = User(password = 'cat')
+		self.assertTrue(u.password_hash != u2.password_hash)
+					</pre>
+				</p>
 			</section> <!-- END of sub topic Hashing Passwords with Werkzeug -->
 
 		</div>
