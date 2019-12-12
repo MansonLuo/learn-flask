@@ -107,6 +107,28 @@ class User(db.Model):
 				<p>
 					check_password_hash()函数返回True意味着被验证的密码是正确的。
 				</p>
+				<p>
+					完成的密码哈希功能可以在shell中测试:<br>
+					<pre class="code">
+(venv) $ flask shell
+>>>> u = User()
+>>>> u.password = 'cat'
+>>>> u.password
+Trackback (most recent call last):
+	....
+	AttributeError: password is not readable attribute
+>>>> u.password_hash
+'pbk.....dfd'
+>>>> u.verify_password('cat')
+True
+>>>> u.verify_password('dog')
+False
+>>>> u2 = User()
+>>>> u2.password = 'cat'
+>>>> u2.password_hash
+'pbk...dff'
+					</pre>
+				</p>
 			</section> <!-- END of sub topic Hashing Passwords with Werkzeug -->
 
 		</div>
