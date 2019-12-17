@@ -1,14 +1,14 @@
 <DOCTYPE html>
 <html>
 	<head>
-		<title>User Authentication</title>
+		<title>Chapter 8: User Authentication</title>
 		<meta charset="utf-8">
 		<link rel="stylesheet" href="../style.css">
 	</head>
 
 	<body>
 		<div id="content">
-			<h1>User Authentication</h1>
+			<h1>Chapter 8: User Authentication</h1>
 			
 			<section id="overview">
 				<h2>Overview</h2>
@@ -237,7 +237,7 @@ def create_app(config_name):
 					<h3>Preparing the User Model for logins</h3>
 					<p>
 						Flask-Login工作与应用程序自己的User模型紧密相连。为了能和应用程序的User模型一起工作， Flask-Login要求User模型必须实现一些通用的属性和方法。以下是要求元素的图片:<br>
-						<img src='.' alt="this is some items that flask-login require User model to contain">
+						<img src='../images/chapter8/flask-login-required-items.png' alt="this is some items that flask-login require User model to contain">
 					</p>
 					<p>
 						这些属性和方法可以直接在模型类中实现，但是处于方便考虑，flask-login提供了一个UserMixin类，该类包含了上述要求的默认实现，其适用于绝大多数情况。以下是更新后的User模型：<br>
@@ -346,7 +346,8 @@ class LoginForm(FlaskForm):
 					</p>
 
 					<p>
-						和登陆页面相关联的模板文件存储为tempaltes/auth/login.html，一下是登陆页面的图片：
+					和登陆页面相关联的模板文件存储为tempaltes/auth/login.html，一下是登陆页面的图片：<br>
+						<img src="../images/chapter8/flasky-login-form.png" alt="flasky login form">
 					</p>
 					<p>
 						在base.html中的导航条使用jinja2条件来显示Log in 或者Log Out链接，其取决于当前用户的登陆状态。以下是模板条件代码：<br>
@@ -402,8 +403,233 @@ def login():
 					<p>
 						为了让用户登陆，该函数先是使用表单提供的email字段来在数据库中尝试加载用户，如果拥有制定email的用户存在，则verify_password()函数将会验证表单提供的password字段。如果密码有效，则flask_login的login_user()函数被调用，用以在用户会话中记录当前用户为以登陆状态。login_user()函数允许用户登陆以及接受一个可选的参数remember_me布尔值。该参数为False时，一旦当前窗体被关闭，那么存储用户登陆状态的用户会话就会过期，因此用户下一次必须重新登陆。而True值造成一个长期的cookie存在与用户的浏览器中，而flask_login使用该cookie来恢复用户会话。可选的REMEMBER_COOKIE_DURATION配置选项可以被用来改变cookie默认的一年时间的存储时长。
 					</p>
+					<p>
+						根据第四章的Post/Redirect/Get模型，可知，一个提交登陆信息的POST请求，最终必须以重定向的响应来结束，但是这里有两种可能的目标URL。如果展示给用户的登陆表单是为了阻止匿名用户以未验证的方式来访问他们想要的网址，但是该URL是受保护的，那么flask-loginJ将会把该受保护的源网址存入名为next的查询字符串参数中，该参数可以通过request.args字典来访问。如果next查询字符串参数的值未定义，那么最终的重定向指向的是Home网址。并且next参数所代表的url会被验证是否是相对url,其目的是组织恶意用户使用该参数将信赖网站的用户重定向到另一个网站。
+					</p>
+					
+					<p>
+						如果用户键入的邮箱地址或密码无效，那么程序将会设置flash信息，并重新渲染登陆表单以为让用户retry.
+					</p>
+					<p>
+						以下是可以渲染登陆表单的登陆模版的代码:<br>
+						<pre class="code">
+# app/templates/auth/login.html: login form template
+							
+{% extends "base.html" %"
+{% import "bootstrap/wtf.html" as wtf %}
+							
+{% block title %} Flasky - Login{% endblock %}
+							
+{% block content %}
+	&lt;div class="page-header"&gt;
+		&lt;h1&gt;Login&lt;/h1&gt;
+	&lt;/div&gt;
+								
+	&lt;div class="col-md-4"&gt;
+		{{ wtf.quick_form(form) }}
+	&lt;/div&gt;
+{% end block %}
+						</pre>
+					</p>
 				</section> <!-- END of Signing User in -->
+					
+				<section id="signingUsersOut">
+					<h3>Signing User Out</h3>
+					<p>
+						以下是用户登出的代码: <br>
+						<pre class="code">
+# app/auth/views.py: logout route
+
+from flask_login import logout_user, login_required
+
+@auth.route('/logout')
+@login_required
+def logout():
+	logout_user()
+	flash('You have been logged out.')
+	
+	return redirect(url_for('main.index'))
+						</pre>
+					</p>
+					<p>
+						为了让用户登出，flask_login的logout_user()函数被调用，用以移除并重置用户会话。	
+					</p>
+				</section> <!-- END of Signing users out. -->
+					
+				<section id="understandingHowFlaskLoginWorks">
+					<h3>Understanding How Flask-Login Works</h3>
+					<p>
+						Flask-Login是一个相当小的扩展，但是由于它在验证流程中引入了看起来毫无关联的代码片段，这导致flask用户难以理解flask-login是怎么工作的。以下是当用户登陆时，所依次发生的操作: <br>
+							<ol>
+								<li>
+									用户点击Log In按钮后,会被导航到http://localhost:5000/auth/login网址，该网址的视图函数会返回一个登陆表单给用户。
+								</li>
+								<li>
+									用户键入他们的用户名以及密码后，点击提交按钮，相同的视图函数会被再次调用，但是这次是POST请求，而不是GET请求:<br>
+										<ol>
+											<li>
+				该验证器验证由表单提交上来的用户验证信息，然后调用flask-login的login_user()函数来实现用户登陆。
+			</li>
+			<li>
+				login_user()函数将该用户的id以字符串的形式写入到用户会话中。
+			</li>	
+			<li>
+				login()视图函数结束，并返回一个指向home的重定向。
+			</li>
+		</ol> <!-- END of child ul element -->
+							
+</li>
+<li>
+	浏览器接收到重定向，并使用GET来请求包含在重定向中的网址: <br>
+		<ol>
+			<li>
+				home page的视图函数被调用，并且main的jinja2模版被渲染。
+			</li>
+			<li>
+				在渲染jinja2模版期间，flask-login的current_user引用首次出现。
+			</li>
+			<li>
+				在本次请求中，current_user环境变量还没有被赋予任何值，因此它调用flask-login的内部函数_get_user()去找到这个用户是谁(我猜，这里的_get_user()函数使用user_loader装饰器指定的用户函数，并将之前login_user()写入用户会话中的用户id作为参数传给装饰器定义的函数，该函数将查询到的用户信息赋值给current_user环境变量)。
+			</li>
+			<li>
+				_get_user()函数检测是否有一个用户id存储在用户会话中(该id是通过login_user()函数写入)。如果该id不存在，它返回一个flask-login的AnonymousUser类的实例。如果该id存在，则其以此id作为参数，调用user_loader装饰器定义的函数。
+			</li>
+			<li>
+				user_loader所定义的函数从数据库中读取相应用户并返回它。flask-login将该用户赋值给只适用于当前请求的current_user环境变量。
+			</li>
+			<li>
+				模版接收current_user环境变量最新的值。
+			</li>
+		</ol>
+</li>
+							</ol>
+					</p>
+					<p>
+						login_required装饰器是构建在current_user环境变量之上的，只用当current_user.is_authenticated表达式为True时，被装饰的视图函数才准许被激活。logout_user()函数只是简单地将用户id从会话中删除。
+					</p>
+				</sectin> <!-- END of understanding how flask-login works -->
+					
+				<section id="TestingLogins">
+					<h3>Testing Logins</h3>
+					<p>
+						为了验证登陆功能有效性，home page被更新来通过用户名字来欢迎用户。以下是产生欢迎的代码:<br>
+						<pre class="code">
+# app/templates/index.html: greeting the logged-in user
+
+Hello, 
+{% if current_user.is_authenticated %}
+	{{ current_user.username }}
+{% else %}
+	Stranger
+{% endif %}!
+						</pre>
+					</p>
+					<p>
+						在这个例子中，current_user.is_authenticated同样被用于决定一个用户是否登陆。
+					</p>
+					<p>
+						因为用户注册功能还没有被创建，一个新用户现在只能通过shell来注册。
+						<pre class="code">
+(venv) $ flask shell
+>>> u = User(email='john@example.com', username='john', password='cat')
+>>> db.session.add(u)
+>>> db.session.commit()
+						</pre>
+					</p>
+					<p>
+						现在新创建的用户可以登陆了，以下是截图:<br>
+						<img src="../images/chapter8/john-login.png">
+					</p>
+				</section> <!-- END of Testing Logins -->
 			</section> <!-- END of User Authentication with flask-login -->
+				
+			<section id="newUserRegistration">
+				<h2>New User Registration</h2>
+				<p>
+					当用户想成为一个网站的成员时，他们必须注册，从而他们被网站所知，并且可以登陆。一个在登陆界面的链接将匿名用户带到注册界面，在这里他们可以填写他们的所需信息。
+				</p>
+				
+				<section id="addingAUserRegistrationForm">
+					<h3>Adding A User Registration Form</h3>
+					<p>
+						在注册界面中使用到的表单要求用户键入邮箱地址，用户名以及密码。以下是表单的代码: <br>
+						<pre class="code">
+# app/auth/forms.py: user registration form
+
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField, BooleanField, SubmitField
+from wtforms.validators import DataRequired, Length, Email, Regexp, EqualTo
+from wtforms import ValidationError
+from ..models import User
+
+class RegistrationForm(FlaskForm):
+	email = StringField('Email', validators=[DataRequired(), Length(1, 64), Email()])
+	username = StringField('Username', validators=[DataRequired(), Length(1, 64), Regexp('^[A-Za-z][A-Za-z0-9_.]*$', 0, 'Username must have only letters, numbers, dots or underscores')])
+	password = PasswordField('Password', validators=[DataRequired(), EqualTo('password2', message='Passwords must match.')])
+	password2 = PasswordField('Confirm password', validators=[DataRequired()])
+	submit = SubmitField('Register')
+	
+	def validate_email(self, field):
+		if User.query.filter_by(email=field.data).first():
+			raise ValidationError('Email already in use.')
+			
+	def validate_username(self, field):
+		if User.query.filter_by(username=field.data).first():
+			raise ValidationError('Username already in use.')
+						</pre>
+					</p>
+					<p>
+						该表单使用Regexp验证器来确定username字段以一个字母开头，并且只包含字母，数字，下划线以及点号。该验证器的第二个和第三个参数分别代表正则表达式flag以及失败时显示的消息。
+					</p>
+					<p>
+						处于安全考虑，密码被键入两次，但是该步骤必须验证两次输入的密码必须相同，而这是通过wtforms的EqualTo验证器来实现的，该验证器将自身添加到其中一个密码上，而将另一个密码作为其参数。
+					</p>
+					<p>
+						该表单有两个以方法形式存在的自定义的验证器，当一个表单定义了一个以前缀validate_，后随一个字段的名字时，那么该方法会像任何预定义的验证器一样被用户调用。在本例中，email和username的自定义验证器保证其值在数据库中的唯一性。该验证器通过抛出一个以错误信息文本为参数的ValidationErro对象来表示验证错误。
+					</p>
+					<p>
+						该注册表单的模板代码存在于/templates/auth/registration.html，以下是注册表单:<br>
+							<img src="../images/chapter8/registration.png">
+					</p>
+					<p>
+						注册链接需要出现在登陆界面中，这样没有账户的用户可以轻易地找到它。以下是修改后的登陆表单模板:<br>
+							<pre class="code">
+# app/templates/auth/login.html: link to the registration page
+
+&lt;p&gt;
+	New user?
+	&lt;a href="{{ url_for('auth.register') }}"&gt;
+		Click here to register.
+	&lt;/a&gt;
+&lt;/p&gt;
+							</pre>
+					</p>
+				</section> <!-- END of sub topic Adding a User Registration Form -->
+					
+				<section id="registeringNewUsers">
+					<h3>Registering New Users</h3>
+					<p>
+						以下是处理注册表单的视图函数:<br>
+						<pre class="code">
+# app/auth/views.py: user registration route
+
+@auth.route('/register', methods=['GET', 'POST'])
+def register():
+	form = RegistrationForm()
+	if form.validate_on_submit():
+		user = User(email=form.email.data, 
+					username=form.username.data,
+					password=form.password.data)
+		db.session.add(user)
+		db.session.commit()
+		flash('You can now login.')
+		return redirect(url_for('auth.login'))
+	return render_template('auth/register.html', form=form)
+						</pre>
+					</p>
+				</section> <!-- END of second level topic registering new users. -->
+			</section> <!-- END of new user registration -->
+				
 		</div> <!-- END of content -->
 
 		<div id="extend">
