@@ -628,6 +628,246 @@ def register():
 						</pre>
 					</p>
 				</section> <!-- END of second level topic registering new users. -->
+					
+				<section id="Account Confirmation">
+					<h3>Account Confirmation</h3>
+					<p>
+						对于当下的应用程序来说，验证用户提供的注册信息的有效性是很重要的。这通常要求可以通过提供的邮件地址来联系到用户。
+					</p>
+					<p>
+						为了验证邮箱地址的有效性，一旦用户完成注册，程序就发送确认邮件给用户。新注册的用户账户默认是未确认的(unconfirmed),一旦用户完成邮件中最终的确认指令，该账户就被标记成confirmed。用户账户确认，这个过程通常涉及到点击一个包含了确认令牌的精心制作的链接地址。	
+					</p>
+					<section id="generatingConfirmationTokensWithItsdangerous">
+						<h4>Generating Confirmation Tokens With Itsdangerous</h4>
+						<p>
+							最简单的用户账户确认链接可以是在确认邮件里包含一个类似于http://www.example.com/auth/confirm/&lt;id&gt;的地址，其中&lt;id&gt;是数据库中user的数字形式的主键值。当用户点击该链接，用于处理该路由的视图函数将接受到的要被确认的用户id视为参数，这将很容易地更新一个用户的confirmed状态。
+						</p>
+						<p>
+							很明显，这很不安全，任何搞清楚了确认链接地址格式的用户可以confirm任意的用户账户，而这仅仅通过发送包含有随机数序列的confirm地址就可以办到。一种安全的方式可以是，用一个包含了相同信息的令牌(token)来取代URL中的&lt;id&gt;，但是这个包含了令牌的confirm链接只有服务器才有能力生成。
+						</p>
+						<p>
+							回忆chapter 4中用户会话的知识可知，flask使用加密签名过的cookie来保护用户会话的内容免受伪造的危险。该用户会话cookie包含了itsdangerous包生成的加密签名。如果用户会话的内容被篡改，加密签名就会和用户会话的内容不再匹配，因此分flask就会丢弃该会话并重新开始一个新的用户会话。而确认令牌也是使用一样的原理。
+						</p>
+						<p>
+							以下的shell会话展示了itsdangerous如何生成包含了用户id的加密签名过的令牌:<br>
+							<pre class="code">
+(venv) $ flask shell
+>>> from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+>>> s = Serializer(app.config['SECRET_KEY'], expires_in=3600)
+>>> token = s.dumps({'confirm': 23})
+>>> token
+'dfdf....ddd'
+>>> data = s.loads(token)
+>>> data
+{'confirm': 23}
+							</pre>
+						</p>
+						<p>
+							itsdangerous包提供了多种类型的令牌生成器，其中类TimedJSONWebSignatureSerializer生成带有时间限制的JSON Web Signatures(JWSs)。该类构造器接受一个加密键作为参数，该参数可以是flask中的SECRET KEY.
+						</p>
+						<p>
+							dumps()方法首先对提供的SECRET_KEY产生加密过的签名，然后将需要加密的用户数据结合前面的加密签名一同序列化成最终的字符串形式的令牌。Serializer()构造器中的expires_in参数指定令牌的有效时间，其单位是秒。
+						</p>
+						<p>
+							为了对令牌进行解码，serializer对象提供了loads()方法，该方法只接受一个令牌参数。该方法验证签名(SECRET_KEY)和有效时间，如果两者都有效，其返回原始未被加密的用户数据。
+						</p>
+						<p>
+							令牌的产生和验证可以集成到User模型中。以下是代码:<br>
+								<pre class="code">
+								
+# app/models.py: user account confirmation
+
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+from flask import current_app
+from . import db
+
+class User(UserMixin, db.Model):
+	#...
+	confirmed = db.Column(db.Boolean, default=False)
+	
+	def generate_confirmation_token(self, expiration=3600):
+		s = Serializer(current_app.config['SECRET_KEY'], expiration)
+		
+		return s.dumps({'confirm': self.id}).decode('utf-8')   # 注意是解码令牌
+		
+	def confirm(self, token):
+		s = Serializer(current_app.config['SECRET_KEY'])  #注意这里的Serializer构造器未使用expire_in参数，也可以使用
+		try:
+			data = s.loads(token.encode('utf-8')) # 注意这里是对令牌进行编码
+		except:
+			return False
+		
+		if data.get('confirm') != self.id:
+			return False
+		self.confirmed = True
+		db.session.add(self)
+		
+		return True
+								</pre>
+						</p>
+						<p>
+							generate_confirmation_token()方法生成一个带有一个默认时间为一小时的令牌。confirm()方法验证令牌，如果其有效，就设置用户模型中的confirmed字段为True.
+						</p>
+						<p>
+							除了验证令牌以外，confirm()方法还检测已登陆用户是否与保存在令牌中的id匹配，该已登陆用户存储在current_user环境变量中。该函数用于确认一个特定用户的令牌不能用来confirm其他的用户。
+						</p>
+						<p>
+							将两个方法加入到单元测试中。
+						</p>
+					</section> <!-- END of third level topic Generating Confirmation Tokens with itsdangerous -->
+						
+					<section id="sendingConfirmationEmails">
+						<h4>Sending Confirmation Emails</h4>
+						<p>
+							当前/register路由在将用户添加到数据库中之后将用户重定向到/index。在重定向之前，该路由需要发送确认邮件。以下是改变后的代码:<br>
+							<pre class="code">
+# app/auth/views.py: registration route with confirmation email
+
+from ..email import send_email
+
+@auth.route('/register', methods=['POST', 'GET'])
+def register():
+	form = RegistrationForm()
+	if form.validate_on_submit():
+		#...
+		db.session.add(user)
+		db.session.commit()
+		token = user.generate_confirmation_token()
+		send_email(user.email, 'Confirmation Your Account', 'auth/email/confirm', user=user, token=token)
+		
+		flash('A confirmation email has been sent to you by email.')
+		
+		return redirect(url_for('main.index'))
+		
+	
+	return render_template('auth/register.html', form=form)
+							</pre>
+						</p>
+						<p>
+							注意在发送确认邮件之前，程序使用db.commit()了。重点是生成令牌需要使用到用户的id，而该id只有在用户添加到数据库之后才才会有初始值。
+						</p>
+						<p>
+							为了分离html文件和验证蓝图要用到的邮件模版，程序将该邮件模版存储在templates/auth/email文件夹。在chapter 6讨论过，邮件body需要普通文本版本和html版本的两个文件。以下是confirmation email template的普通文本版本:<br>
+							<pre class="code">
+# APP/templates/auth/email/confirm.txt: text body of confirmation email
+
+Dear {{ user.username }}
+
+Welcome to Flasky!
+
+To confirm your account, please click on the following link:
+
+{{ url_for('auth.confirm', token=token, _external=True) }}
+
+Sincerely,
+
+The Flasky Team
+
+Note: replies to this email address are not monitored.
+							</pre>
+						</p>
+						<p>
+							url_for()函数默认生成相对路径，例如，url_for('auth.confirm', token='abc')返回/auth/confirm/abc,该相对路径很显然不能用在邮件中。相对路径适用于在网页中。而浏览器默认将向相对地址添加主机名和端口号来生成绝对地址。然而在发送邮件上是没有这个环境的。url_for()中的_external参数要求返回添加了网络传输协议，主机名，端口号的完全地址。
+						</p>
+						<p>
+							以下是confirm account的代码: <br>
+							<pre class="code">
+# app/auth/views.py: confirm a user account
+
+from flask_login import current_user
+
+@auth.route('/confirm/&lt;token&gt;)
+@login_required
+def confirm(token):
+	if current_user.confirmed:
+		return redirect(url_for('mail.index'))
+		
+	if current_user.confirm(token):
+		db.session.commit()  # in user.confirm(),it alter the user.confirmed field after it run correctly with db.add() run
+		flash('You have confirmed your account. Thanks!')
+	
+	else:
+		flash('The confirmation link is invalid or has expired.')
+		
+	return redirect(url_for('mail.index'))
+							</pre>
+						</p>
+						
+						<p>
+							该路由受login_required装饰器保护，当注册后的用户点击confirmation 邮件中的该地址，其会自动登陆(用户会话中保存已登陆用户的信息).
+						</p>
+						<p>
+							该函数首先检测该以登陆用户是否已confirmed，如果已经confirmed，则重定向到home,结果是什么都不做。这可以避免用户失误导致多次点击confirm 邮件时所做的不必要工作。
+						</p>
+						<p>
+							因为整个token confirmation 任务是在User模型中完成的，而该视图函数只需要执行db.confirm()以及根据结果flash相应信息即可。当confirm成功,User模型的confirmed字段被修改成True,且其执行db.add(),而后该视图函数执行db.commit()。
+						</p>
+						<p>
+							每一个应用都可以决定一个未验证用户具有什么权限，可以做什么。一种可能是，只准许未验证用户登陆应用，并且展示一个要求立即confirm account才能进一步使用app的页面。
+						</p>
+						<p>
+							上述的要求可以使用before_request钩子来实现。但是该钩子在蓝图中只能应用到属于该蓝图的请求上。如果蓝图钩子要安装应用到app所有的请求上，可以使用before_app_request装饰器。以下是实现:<br>
+							<pre class="code">
+# app/auth/views.py: filtering unconfirmed account with the before_app_request handler
+
+@auth.before_app_request
+def before_request():
+	if current_user.is_authenticated \
+		and not current_user.confirmed \
+		and request.blueprint != 'auth' \
+		and request.endpoint != 'static':
+			return redirect(url_for('auth.unconfirmed'))
+			
+@auth.route('/unconfirmed')
+def unconfirmed():
+	if current_user.is_anonymous or current_user.confirmed:
+		return redirect(url_for('mail.index'))
+	
+	return render_template('auth/unconfirmed.html')
+							</pre>
+						</p>
+						<p>
+							before_app_request handler会在下列三个满足时，中断用户的当前请求:<br>
+							<ol>
+								<li>该用户已登陆(current_user.is_authenticated为True</li>
+								<li>当前用户的账户为confirm</li>
+								<li>当前用户请求的网址不属于验证蓝图中的网址以及属于请求资源文件的static路由。访问验证路由必须不受限制，这样用户才能执行账户confirm操作以及其他的账户管理功能。
+							</ol>
+						</p>
+						<p>
+							如果上述三个条件全部满足，则当前用户的请求会被中断，然后被重定向到/auth/unconfirmed路由上，该路由展示一个提示用户立即confirm账户的页面。
+						</p>
+						
+						<p>
+							注意，无论before_request还是before_app_request返回一个响应还是重定向，flask只会将该响应发送给客户端，而不会执行用户最初请求所关联的视图函数。这允许app在需要时通过回调来中断原始请求。
+						</p>
+						<p>
+							展示给未confirm用户的页面只是渲染一个模版，该模版要求用户立即confirm账户以及一个用于原验证email无效时可以用的再生成新confirm email的功能。<br>
+								<img src="../images/chapter8/unconfirmed.png" alt="a pic">
+						</p>
+						<p>
+							以下是重发confirm email的路由:<br>
+							<pre class="code">
+# app/auth/views.py: resending the account confirmation email
+
+from ..email import send_email
+
+@auth.route('/confirm')
+@login_required
+def resend_confirmation():
+	token = current_user.generate_confirmation_token()
+	send_email(current_user.email, 'Confirm Your Account', 'auth/email/confirm', user=current_user, token=token)
+	flash('A new confirmation email has been sent to you by email.')
+	
+	return redirect(url_for('mail.index'))
+							</pre>
+						</p>
+						<p>
+							该路由重复在注册阶段做的发送邮件的任务，目标用户有current_user环境变量表示。并且该路由使用login_required来保证访问该地址的用户处于已登陆状态。
+						</p>
+					</sectoin> <!-- END of third level topic Sending confirmation emails -->
+				</section> <!-- END of second level topic Account Confirmation -->
+					
 			</section> <!-- END of new user registration -->
 				
 		</div> <!-- END of content -->
