@@ -867,9 +867,44 @@ def resend_confirmation():
 						</p>
 					</sectoin> <!-- END of third level topic Sending confirmation emails -->
 				</section> <!-- END of second level topic Account Confirmation -->
-					
+				
+
 			</section> <!-- END of new user registration -->
 				
+				
+			<section id="accountManagement">
+				<h2>Account Management</h2>
+				
+				</p>
+					拥有账户的用户可能随时会改变账户信息。使用本章的技术，将以下任务添加进验证蓝图。
+					<dl>
+						<dt>
+							密码更新
+						</dt>
+						<dd>
+							有安全意识的用户可能需要周期性地改变他们的密码。这是一个简单的功能，因为一旦用户登陆后，展示一个用新密码来取代旧密码的任务给用户就是安全的。该实现在github上。应用重构为使用下拉框包含Log Out和Change Password链接。
+						</dd>
+						
+						<dt>
+							密码重置
+						</dt>
+						<dd>
+							为了避免用户因为遗忘密码而导致账户无法再使用，可以提供一个可选的密码重置功能。使用token来安全地密码重置。当用户要求密码重置时，用户会收到一封带有重置token的邮件。用户点击邮件中的链接，之后token被正确验证，一个可以键入新密码的页面被展示给用户。该功能同样在github上。
+						</dd>
+						
+						<dt>
+							改变绑定的邮件地址
+						</dt>
+						<dd>
+							用户可以改变注册时使用的邮件地址，新邮件地址同样需要被confirm。用户通过在表单中键入新的邮箱地址来完成该功能。可以通过将带有token的邮件发送给用户来完成邮箱验证。当服务器接受到用户的反馈邮件时，它可以以此来更新用户对象。当服务器在等待接收token期间，它可以将新邮箱地址存储在新的数据库字段中，该字段服务于即将到来的邮件地址，或者他可以将地址和id一同从存储在token中。该功能同样在github中。
+						</dd>
+					</dl>
+				</p>
+				
+				<p>
+					在下一章，应用将通过使用User模型来扩展用户子系统。
+				</p>
+			</section> <!-- END of second topic  of account manaement -->
 		</div> <!-- END of content -->
 
 		<div id="extend">
