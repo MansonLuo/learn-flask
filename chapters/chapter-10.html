@@ -26,7 +26,7 @@
 					<pre class="code">
 # app/models.py: user information fields
 
-class User(db.Model):
+class User(db.Model, UserMixin):
 	#...
 	
 	name = db.Column(db.String(64))
@@ -47,7 +47,7 @@ class User(db.Model):
 					<pre class="code">
 # app/models.py: refreshing a user's last vist time
 
-class User(db.Model):
+class User(db.Model, UserMixin):
 	#..
 	
 	def ping(self):
@@ -338,6 +338,13 @@ def edit_profile_admin(id):
 					</p>
 				</section><!-- END of second topic of Administrator-Level Profile Editor with Profile Editor -->
 			</section> <!-- END of first level topic of Profile Editor -->
+				
+			<section id="UserAvatars">
+				<h2>User Avatars</h2>
+				<p>
+					国内无法使用
+				</p>
+			</section> <!-- END of first level topic of User Avatars -->
 		</div>
 
 		<div id="extend">
