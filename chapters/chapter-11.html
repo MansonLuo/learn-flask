@@ -300,6 +300,7 @@ def index():
 # app/templates/_macros.html: pagination template macro
 
 #该模版中使用的url_for()方法中，因为page选项是动态路由中定义的动态变量，因此page变量会被添加到url末尾，以查询字符串的形式存在。
+# 注意用jinja2条件语句渲染html元素属性时，得使用空格来使元素名称值和条件语句前后保持距离，这样渲染的元素才不会出现错误显示。
 
 {% macro pagination_widget(pagination, endpoint) %}
 &lt;ul class="pagination"&gt;
