@@ -376,7 +376,298 @@ def index():
 						<img src="../images/chapter11/pagination-widget.png" alt="pagination widget">
 					</p>
 				</section> <!-- END of second topic of adding a pagination widget within paginating long blog post lists -->
-			</section> <!-- END of Paginating Long Blog Post Lists -->
+			</section> <!-- END of first topic of Paginating Long Blog Post Lists -->
+				
+			<section id="RichTextPostsWithMarkdownAndFlaskPageDown">	
+				<h2>Rich-Text Posts With MarkDown And Flask-PageDown</h2>
+				
+				<section id="overview">
+					<h3>Overview</h3>
+					<p>
+						普通文本用于短消息和状态更新是足够的，但是对于喜欢写长文章的用户会发现普通文本存在很多格式化上的限制。本节用于键入博客日志的文本框将更新，以支持MarkDown语义以及展示富文本的预览。
+					</p>
+					<p>
+						实现上述需求，需要使用到一些包:<br>
+						<ul>
+							<li>
+								PageDown, 一个javascript实现的，客户端MarkDown到html转换库。
+							</li>
+							<li>
+								Flask-PageDown, flask简单封装了PageDown库，并且使得PageDown和Flask-WTF表单能够协同工作。
+							</li>
+							<li>
+								MarkDown, 一个python实现的服务端MarkDown到HTML转换库。
+							</li>
+							<li>
+								Bleach, 一个python实现的HTML净化器。
+							</li>
+						</ul>
+					</p>
+				</section> <!-- END of second level topic of overview of rich-text posts -->
+					
+				<section id="UsingFlaskPageDown">
+					<h3>Using Flask-PageDown</h3>
+					<p>
+						flask-pagedown扩展定义了一个和wtforms的TextAreaField类类似的PageDownField类。在这之前，必须初始化该扩展。<br>
+						<pre class="code">
+# app/__init__.py: Flask-PageDown初始化
+
+from flask_pagedown import PageDown
+#....
+
+pagedown = PageDown()
+#....
+
+def create_app(config_name):
+	#...
+	pagedown.init_app(app)
+	#...
+						</pre>
+					</p>
+					<p>
+						为了转换主页中的文本区域控件到MarkDown富文本编辑器，PostForm的body字段必须改变成PageDownFiled字段:<br>
+						<pre class="code">
+# app/main/forms.py: MarkDown-enabled post form
+
+from flask_pagedown.fields import PageDownField
+
+class PostForm(FlaskForm):
+	body = PageDownField("What's on your mind?", validators=[DataRequired()])
+	submit = SubmitField('Submit')
+	
+						</pre>
+					</p>
+					<p>
+						MarkDown文本预览也由PageDown库生成。而Flask-PageDown简化了该任务，可以使用其预定义的宏来加载文本预览所需的js脚本:<br>
+						<pre class="code">
+# app/templates/index.html: Flask-PageDown template daclaration
+
+{% block scripts %}
+	{{ super() }}
+	{{ pagedown.include_pagedown() }}  #在使用moment扩展时，使用类似的语句来加载脚本，moment.include_moment() 
+{% endblock %}
+						</pre>
+					</p>
+					<p>
+						这里的预览有意思，用户在富文本框中输入的html或者markdown会实时显示。<br>
+						<img src="../images/chapter11/rich-text-posts.png" alt="rich-text posts">
+					</p>
+				</section><!-- END of second level topic of using flask-pagedown within rich-text posts -->
+					
+				<section id="handlingRichTextOnTheServer">
+					<h3>Handling Rich Text On the Server</h3>
+					<p>
+						当表单提交时，包含了markdown或者html的富文本使用POST请求被提交；以html预览的内容被丢弃。发送生成的html预览代码是有潜在风险的，因为攻击者很容易就可以伪造和源markdown文本不匹配的html代码，然后将该恶意html代码发送。为了避免任何风险，只能发送原始的markdown文本给服务器，由服务器将原始markdown文本转换成相应的html文本，这种转化是使用python实现的markdown到html的转换器----MarkDown.转换后的html代码还要使用Bleach库来净化，过滤掉那些app不允许出现的html元素。
+					</p>
+					<p>
+						可以在_posts.html中将来自于服务器的markdown形式的博客内容转换成html形式的，(服务其上的markdown文本转换成供客户端显示的相应html博客内容)但是这不高效，因为每次posts需要渲染到页面上时，都需要执行转换操作(对于同一个博客列表页面，每次刷新时，都会执行转化)。解决办法是在服务器上同时存储markdown文本和其相应的html版本。为了避免累赘，这种转化可以在博客在数据库中创建时执行，然后将转换后的html版本保存到数据库。可以将转换后的html内容保存在Post表中的新字段里，这样模版可以直接访问该html版本内容。原始的markdown文本也保存在数据库中，以便用户日后修改它。以下是修改后的Post表:<br>
+						<pre class="code">
+# app/models.py: markdown text handling in the model
+
+from markdown import markdown
+import bleach
+
+class Post(db.Model):
+	#...
+	body_html = db.Column(db.Text)
+	#...
+	
+	@staticmethod
+	def on_changed_body(target, value, oldvalue, initiator):
+		allowed_tags = ['a', 'abbr', 'acronym', 'b', 'blockquote', 'code', 
+				'em', 'i', 'li', 'ol', 'pre', 
+				'strong', 'ul', 'h1', h2',
+				'h3', 'p']
+		target.body_html = bleach.linkfy(bleach.clean(
+			markdown(value, output_format='html', 
+			tags=allowed_tags, 
+			strip=True))
+			
+db.event.listen(Post.body, 'set', Post.on_changed_body)
+						</pre>
+					</p>
+					<p>
+						on_changed_body()函数注册成为SQLAlchemy的一个set事件监听器，其作用是当body字段的值发生改变时，自动调用on_changed_body()函数。该事件处理器将源markdown文本转换成的html版本内容存储在body_html字段里，这实现了高效自动化转换markdown文本到html文本。
+					</p>
+					<p>
+						以下是实际转换的步骤。首先markdown()方法将markdown转换成html版本，该处理结果被传入clean方法，而后从结果集中过滤掉哪些不在allowed_tags白名单中的html标签。最后一步转换是linkify()方法将任何以文本形式存在的url包含到链接元素&lt;a&gt;中。这最后的一步是必要的，因为markdown不具备这种自动链接生成，但是这是普遍的需求。在客户端，PageDown通过可选的扩展库来支持该功能，因此linkfy()满足在服务器上的需求。
+					</p>
+					<p>
+						最后需要将模版中的post.body用post.body_html取代。<br>
+						<pre class="code">
+# app/templates/_posts.html: use the HTML version of the post body in the template
+
+....
+&lt;div class="post-body"&gt;
+	{% if post.body_html %}
+		{{ post.body_html | safe }}
+	{% else %}
+		{{ post.body }}
+	{% endif %}
+&lt;/div&gt;
+.....
+						</pre>
+					</p>
+					<p>
+						| safe 后缀用于告诉jinja2不要转义html代码，使其能渲染界面。处于安全原因，jinja2默认转义模版中变量的值，但是Markdown-generated HTML是由服务器生成的，因此直接渲染该html是安全的。s
+					</p>
+				</section> <!-- END of second topic of handling rich text on server within rich text -->
+			</section> <!-- END of first level topic of rich-text posts with markdown and Flask-PageDown -->
+				
+			<section id="PermanentLinksToBlogPosts">
+				<h2>Permanent Links to Blog Posts</h2>
+				<p>
+					网站用户可能会在社交网络上将某个博客的链接分享给好友。因此，每一个博客日志都会被赋予唯一url的页面来显示它。以下是该功能的视图函数定义:<br>
+					<pre class="code">
+# app/main/views.py: enabling permanent links to posts
+
+@main.route('/post/&lt;int:id&gt;')
+def post(id):
+	post = Post.query.get_or_404(id)
+	return render_template('post.html', posts[post]) # posts 是列表
+					</pre>
+				</p>
+				<p>
+					博客日志的url使用博客独立的id来构造。
+				</p>
+				<p>
+					对于绝大多数网站来说，在博客分享链接中包含可读性文本比存粹的id要更合适。这可以向Post模型中添加新字段slug来实现，该字段的来源与博客的标题或者博客首行内容。
+				</p>
+				<p>
+					将博客链接添加进_posts.html中每个博客的下方:<br>
+					<pre class="code">
+# app/templates/_posts.html: adding permanent links to posts
+
+&lt;ul class="posts"&gt;
+	{% for post in posts %}
+		&lt;li class="post"&gt;
+			.....
+			
+			&lt;div class="post-footer"&gt;
+				&lt;a href="{{ url_for('.post', id=post.id) }}"&gt;
+					&lt;span class="label label-default"&gt;Permalink&lt;/span&gt;
+				&lt;/a&gt;
+			&lt;/div&gt;
+		&lt;/li&gt;
+	{% endfor %}
+&lt;/ul&gt;
+					</pre>
+				</p>
+				<p>
+					更新使用_posts.html的posts.html:<br>
+					<pre class="code">
+# app/templates/post.html: permanent link template
+
+{% extend 'base.html' %}
+
+{% block title %}Flasky - Post{% endblock %}
+
+{% block content %}
+{% include '_posts.html' %}
+{% endblock %}
+					</pre>
+				</p>
+				
+			</section> <!-- END of first topic of Permanent links to blog posts -->
+				
+			<section id="blogPostEditor">
+				<h2>Blog Post Editor</h2>
+				<p>
+					博客最后一个功能是博客编辑器，该编辑器允许用户修改其已有的博客。该编辑器存在于一个独立的模版文件中，也是使用Flask-PageDown,因此向博客预览之下添加一个文本框，在这里用户可以修改其中的markdown文本。<br>
+					<pre class="code">
+# app/templates/edit_post.html: edit blog post template
+
+{% extends 'base.html' %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% block title %}Flasky - Edit Post{% endblock %}
+
+{% block content %}
+	&lt;div&gt;
+		&lt;h1&gt; Edit Post &lt;/h1&gt;
+	&lt;/div&gt;
+	
+	&lt;div&gt;
+		{{ wtf.quick_form(form) }}
+	&lt;/div&gt;
+{% endblock %}
+
+{% block scripts %}
+	{{ super() }}
+	{{ pagedown.include_pagedown() }}
+{% endblock %}
+					</pre>
+				</p>
+				<p>
+					以下是支持博客编辑器的视图函数:<br>
+					<pre class="code">
+# app/main/views.py: edit blog post route
+
+@main.route('/edit/&lt;int:id&gt;', methods=['POST', 'GET'])
+@login_required
+def edit(id):
+	post = Post.query.get_or_404(id)
+	if current_user != post.author and \
+		not current_user.can(Permission.ADMIN):
+		abort(403)
+	
+	form = PostForm()
+	if form.validate_on_submit():
+		post.body = form.body.data
+		db.session.add(post)
+		db.session.commit()
+		
+		flash('The post has been updated.')
+		
+		return redirect(url_for('.post', id=post.id))
+		
+	form.body.data = post.body
+	return render_template('edit_post.html', form=form)
+					</pre>
+				</p>
+				<p>
+					上述视图函数只允许博客作者编辑自己的博客，以及管理员可以编辑任何人的博客。如果某用户尝试编辑其他用户的博客，app会返回403错误。
+				</p>
+				<p>
+					以下是向博客模版中添加编辑器链接的代码:<br>
+					<pre class="code">
+# app/templates/_posts.html: adding the edit blog post link
+
+&ul class="posts"&gt;
+	{% for post in posts %}
+		&lt;li class='post'&gt;
+			.....
+			
+			&lt;div class="post-content"&gt;
+				....
+				
+				&lt;div class="post-footer"&gt;
+					....
+					
+					{% if current_user == post.author %}
+						&lt;a href="{{ url_for('.edit', id=post.id) }}"&gt;
+							&lt;span class="label label-primary"&gt;Edit&lt;/span&gt;
+						&lt;/a&gt;
+						
+					{% elif current_user.is_administrator() %}
+						&lt;a href="{{ url_for('.edit', id=post.id) }}"&gt;
+							&lt;span class="label label-danger"&gt;
+								Edit [ADMIN]
+							&lt;/span&gt;
+						&lt;/a&gt;
+					{% endif %}
+				&lt;/div&gt;
+			&lt;/div&gt;
+		&lt;/li&gt;
+	{% endfor %}
+&lt;/ul&gt;
+					</pre>
+				</p>
+				<p>
+					在属于当前用户的博客下面添加了编辑标签。而对于当前用户是管理员的情况下，一个红色的编辑标签被添加到所有博客下面。
+					<img src="../images/chapter11/edit-post.png" alt="edit post">
+				</p>
+			</section> <!-- END of first level topic of Blog Post Editor -->
 		</div>
 
 		<div id="extend">
